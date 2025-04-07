@@ -1,26 +1,986 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* PDF Viewer Styles */
+.pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
+
+.pdf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--background, white);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.pdf-viewer-container {
+  display: flex;
+  justify-content: center;
+  background-color: #f5f5f5;
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.pdf-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+  background-color: white;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Make PDF pages centered and properly contained */
+.react-pdf__Document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.react-pdf__Page {
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  position: relative;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Prevent canvas overflow */
+.react-pdf__Page__canvas {
+  max-width: 100%;
+  height: auto !important;
+  display: block;
+  user-select: none;
+}
+
+/* Text selection styles */
+.react-pdf__Page__textContent {
+  user-select: text;
+  cursor: text;
+  max-width: 100%;
+}
+
+.react-pdf__Page__textContent span {
+  color: transparent;
+  position: absolute;
+}
+
+.react-pdf__Page__textContent span::selection {
+  background-color: rgba(59, 130, 246, 0.3); /* Blue selection color */
+}
+
+/* Annotation styles */
+.pdf-annotations-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  max-width: 100%;
+}
+
+.pdf-annotation {
+  position: absolute;
+  background-color: rgba(255, 242, 0, 0.2);
+  border: 1px solid rgba(255, 200, 0, 0.7);
+  border-radius: 2px;
+  pointer-events: all;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.pdf-annotation:hover {
+  background-color: rgba(255, 242, 0, 0.35);
+}
+
+.pdf-annotation--active {
+  background-color: rgba(255, 119, 0, 0.25);
+}
+
+.pdf-annotation--active:hover {
+  background-color: rgba(255, 119, 0, 0.4);
+}
+
+/* Annotation tooltip with glassmorphism */
+.annotation-tooltip {
+  position: fixed;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  max-width: 320px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  transition: all 0.2s ease-out;
+  transform-origin: top center;
+  animation: tooltip-enter 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dark .annotation-tooltip {
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(60, 60, 60, 0.3);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes tooltip-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.annotation-tooltip-exit {
+  animation: tooltip-exit 0.2s forwards ease-in-out;
+}
+
+@keyframes tooltip-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+    filter: blur(2px);
+  }
+}
+
+/* Tooltip arrow */
+.annotation-tooltip::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 24px;
+  width: 14px;
+  height: 14px;
+  background: inherit;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  transform: rotate(45deg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dark .annotation-tooltip::before {
+  border-left: 1px solid rgba(60, 60, 60, 0.3);
+  border-top: 1px solid rgba(60, 60, 60, 0.3);
+}
+
+/* Position variations */
+.tooltip-top::before {
+  top: auto;
+  bottom: -8px;
+  transform: rotate(225deg);
+}
+
+.tooltip-right::before {
+  left: auto;
+  right: 24px;
+}
+
+/* Tooltip content styling */
+.annotation-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #555;
+  font-size: 0.75rem;
+}
+
+.dark .annotation-tooltip-header {
+  color: #aaa;
+}
+
+.annotation-tooltip-author {
+  font-weight: 600;
+  color: #333;
+}
+
+.dark .annotation-tooltip-author {
+  color: #eee;
+}
+
+.annotation-tooltip-date {
+  font-size: 0.7rem;
+  color: #777;
+}
+
+.dark .annotation-tooltip-date {
+  color: #999;
+}
+
+.annotation-tooltip-content {
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.dark .annotation-tooltip-content {
+  color: #eee;
+}
+
+.annotation-tooltip-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+.annotation-tooltip-action {
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #3b82f6;
+  transition: background 0.2s;
+}
+
+.annotation-tooltip-action:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.dark .annotation-tooltip-action {
+  color: #60a5fa;
+}
+
+.dark .annotation-tooltip-action:hover {
+  background: rgba(96, 165, 250, 0.1);
+}
+
+/* Selection tools */
+.selection-tools {
+  position: absolute;
+  z-index: 100;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+/* Animation utilities */
+.animate-in {
+  animation-delay: 0ms;
+  animation-fill-mode: both;
+}
+
+.fade-in-0 {
+  animation-name: fadeIn;
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.zoom-in-95 {
+  animation-name: zoomIn95;
+  animation-duration: 100ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn95 {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Responsive toolbar */
+@media (max-width: 640px) {
+  .pdf-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* Flash highlight effect for annotations */
+@keyframes flashHighlight {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.flash-highlight {
+  animation: flashHighlight 2s ease-in-out;
+  box-shadow: 0 0 0 2px hsl(var(--primary));
+  z-index: 50 !important;
+}
+
+/* Scroll highlight effect */
+.scroll-highlight {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  animation: flashHighlight 2s ease-in-out;
+}
+
+/* Annotation mode indicator */
+.annotation-mode {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.annotation-mode-highlight {
+  background-color: theme('colors.yellow.100');
+  border: 1px solid theme('colors.yellow.300');
+  color: theme('colors.yellow.800');
+}
+
+.annotation-mode-note {
+  background-color: theme('colors.blue.100');
+  border: 1px solid theme('colors.blue.300');
+  color: theme('colors.blue.800');
+}
+
+.annotation-mode-comment {
+  background-color: theme('colors.cyan.100');
+  border: 1px solid theme('colors.cyan.300');
+  color: theme('colors.cyan.800');
+}
+
+.annotation-mode-draw {
+  background-color: theme('colors.pink.100');
+  border: 1px solid theme('colors.pink.300');
+  color: theme('colors.pink.800');
+}
+
+/* When in annotation mode, change the cursor */
+.pdf-container.annotating-highlight {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z'%3E%3C/path%3E%3Cpath d='m13 13 6 6'%3E%3C/path%3E%3C/svg%3E") 0 24, text;
+}
+
+.pdf-container.annotating-note {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E") 0 24, text;
+}
+
+.pdf-container.annotating-draw {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ec4899' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z'%3E%3C/path%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'%3E%3C/path%3E%3Cpath d='m2 2 7.586 7.586'%3E%3C/path%3E%3Ccircle cx='11' cy='11' r='2'%3E%3C/circle%3E%3C/svg%3E") 0 24, crosshair;
+}
+
+/* Color picker for annotation categories */
+.color-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.color-swatch.selected {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.color-swatch.selected::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: white;
+}
+
+/* Glassmorphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .glass {
+  background: rgba(17, 25, 40, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Noise pattern for AI components */
+.ai-noise {
+  position: relative;
+}
+
+.ai-noise::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Text shimmer animation */
+@keyframes text-shimmer {
+  0% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: 0% center;
+  }
+}
+
+.animate-text-shimmer {
+  animation: text-shimmer 2.5s ease-out infinite alternate;
+}
+
+/* Shiny text animation */
+@keyframes shiny-text {
+  from {
+    background-position: 0% 0%;
+  }
+  to {
+    background-position: 100% 0%;
+  }
+}
+
+.animate-shiny-text {
+  animation: shiny-text 1s cubic-bezier(.6,.6,0,1) infinite;
+}
+
+/* Professional tab effects */
+.tab-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-glow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.05) 30%, 
+    rgba(59, 130, 246, 0.08) 70%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: tab-shine 3s infinite;
+}
+
+@keyframes tab-shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  20%, 100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Hypothesis-style annotation highlights */
+.highlight-yellow {
+  background-color: rgba(255, 242, 43, 0.3);
+  border-bottom: 2px solid rgba(255, 242, 43, 0.7);
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.highlight-green {
+  background-color: rgba(104, 219, 104, 0.3);
+  border-bottom: 2px solid rgba(104, 219, 104, 0.7);
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.highlight-blue {
+  background-color: rgba(117, 183, 242, 0.3);
+  border-bottom: 2px solid rgba(117, 183, 242, 0.7);
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.highlight-pink {
+  background-color: rgba(255, 152, 207, 0.3);
+  border-bottom: 2px solid rgba(255, 152, 207, 0.7);
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+/* Enhanced glass morphism */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+.dark .glass-morphism {
+  background: rgba(17, 25, 40, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Tab active indicator animation */
+@keyframes tab-indicator-pulse {
+  0% {
+    box-shadow: 0 0 5px 0px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 5px 0px rgba(59, 130, 246, 0.3);
+  }
+}
+
+.tab-indicator {
+  animation: tab-indicator-pulse 2s infinite;
+}
+
+/* Hide scrollbar but allow scrolling */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* Enhanced tab glow effects */
+.tab-border-glow {
+  position: relative;
+}
+
+.tab-border-glow::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  animation: border-pulse 2s infinite;
+}
+
+@keyframes border-pulse {
+  0% {
+    opacity: 0.8;
+    box-shadow: 0 0 6px 1px rgba(59, 130, 246, 0.4), 0 0 2px 0px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 10px 2px rgba(59, 130, 246, 0.6), 0 0 4px 0px rgba(59, 130, 246, 0.4);
+  }
+  100% {
+    opacity: 0.8;
+    box-shadow: 0 0 6px 1px rgba(59, 130, 246, 0.4), 0 0 2px 0px rgba(59, 130, 246, 0.2);
+  }
+}
+
+/* Tab breathing animation for new messages */
+.tab-breathing {
+  animation: tab-breathe 2s ease-in-out;
+}
+
+@keyframes tab-breathe {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px 4px rgba(59, 130, 246, 0.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Tab notification dot */
+.tab-notification {
+  position: relative;
+}
+
+.tab-notification::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.4);
+  animation: notification-pulse 1.5s infinite;
+}
+
+@keyframes notification-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+}
+
+/* Message arrival animation */
+.message-arrive {
+  animation: message-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes message-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Input animation */
+.input-focused {
+  animation: focus-pulse 2s infinite;
+}
+
+@keyframes focus-pulse {
+  0% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2), 0 0 8px 2px rgba(59, 130, 246, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3), 0 0 12px 4px rgba(59, 130, 246, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2), 0 0 8px 2px rgba(59, 130, 246, 0.1);
+  }
+}
+
+/* Empty input pulse animation */
+.empty-input-pulse {
+  animation: empty-input-pulse 6s ease-in-out infinite;
+}
+
+@keyframes empty-input-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+  30% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15), 0 0 12px 4px rgba(59, 130, 246, 0.1);
+  }
+  70% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* Tab glow color variants */
+.tab-border-glow-blue::after {
+  background: linear-gradient(to right, #60a5fa, #3b82f6, #60a5fa);
+  box-shadow: 
+    0 0 10px 2px rgba(59, 130, 246, 0.6),
+    0 0 4px 0px rgba(59, 130, 246, 0.4);
+}
+
+.tab-border-glow-amber::after {
+  background: linear-gradient(to right, #fbbf24, #f59e0b, #fbbf24);
+  box-shadow: 
+    0 0 10px 2px rgba(245, 158, 11, 0.6),
+    0 0 4px 0px rgba(245, 158, 11, 0.4);
+}
+
+.tab-border-glow-purple::after {
+  background: linear-gradient(to right, #a78bfa, #8b5cf6, #a78bfa);
+  box-shadow: 
+    0 0 10px 2px rgba(139, 92, 246, 0.6),
+    0 0 4px 0px rgba(139, 92, 246, 0.4);
+}
+
+/* Default tab-border-glow (blue) */
+.tab-border-glow::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  animation: border-pulse 2s infinite;
+}
+
+/* Selection and annotation feedback effects */
+.text-selection-glow {
+  position: relative;
+}
+
+.text-selection-glow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.5) 0%,
+    rgba(59, 130, 246, 0.3) 30%,
+    rgba(59, 130, 246, 0) 70%
+  );
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  z-index: 10;
+  pointer-events: none;
+  animation: selection-pulse 0.6s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+@keyframes selection-pulse {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    width: 200px;
+    height: 200px;
+    opacity: 0;
+  }
+}
+
+/* Annotation reaction dots */
+.annotation-reaction {
+  position: relative;
+}
+
+.annotation-reaction::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: #3b82f6;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  opacity: 0;
+  animation: reaction-dot 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes reaction-dot {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+/* Color variants for different annotation types */
+.annotation-reaction-highlight::before {
+  background: #fbbf24;
+}
+
+.annotation-reaction-comment::before {
+  background: #34d399;
+}
+
+.annotation-reaction-question::before {
+  background: #60a5fa;
+}
+
+.annotation-reaction-important::before {
+  background: #f87171;
+}
+
+/* Radiating rings effect */
+.radiating-rings {
+  position: relative;
+}
+
+.radiating-rings::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  opacity: 0;
+  animation: radiating-rings 1s cubic-bezier(0, 0.5, 0.5, 1) forwards;
+}
+
+@keyframes radiating-rings {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(59, 130, 246, 0);
+    opacity: 0.7;
+  }
+  100% {
+    box-shadow: 0 0 0 30px rgba(59, 130, 246, 0);
+    opacity: 0;
+  }
+}
+

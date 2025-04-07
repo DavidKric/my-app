@@ -1,0 +1,776 @@
+'use client';
+
+// Import the centralized PDF setup
+import '@/lib/pdf-setup';
+
+import React, { useState, useEffect, useRef, Suspense, useContext, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { useAnnotations } from '@/components/context_panel/annotations/AnnotationProvider';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  ZoomIn, 
+  ZoomOut, 
+  Maximize, 
+  List, 
+  Image, 
+  Loader2,
+  RotateCw,
+  RotateCcw, 
+  Highlighter,
+  FileText,
+  PenTool,
+  Search,
+  BookMarked,
+  MessageSquare,
+  AlertCircle,
+  X,
+  Keyboard,
+  Download,
+  ArrowDownToLine,
+  Minimize,
+  ListTree,
+  LayoutGrid,
+  Printer
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Annotation, AnnotationType } from './AnnotationOverlay';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip } from '@/components/ui/tooltip';
+import PDFErrorBoundary from './PDFErrorBoundary';
+import scrollService, { ScrollPosition } from '@/lib/scroll-service';
+import { 
+  DEFAULT_ZOOM_SCALE,
+  RENDER_TYPE,
+  ZoomInButton, 
+  ZoomOutButton, 
+  PageNumberControl,
+  SidePanel as AllenAISidePanel,
+  PercentFormatter,
+  BoundingBox,
+  DownloadButton,
+  TransformContext,
+  ScrollContext,
+  UiContext,
+  DocumentContext,
+  ContextProvider,
+  rotateClockwise as libraryRotateClockwise,
+  rotateCounterClockwise as libraryRotateCounterClockwise,
+  scrollToPdfPageIndex,
+  PrintButton,
+  Outline
+} from '@allenai/pdf-components';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
+
+// Import Toolbar components
+import Toolbar from './Toolbar';
+import { PDFToolbar } from './EnhancedPDFToolbar';
+
+// Dynamic imports to prevent SSR issues
+const PDFComponents = dynamic(() => import('./PDFComponents'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center min-h-[500px]">
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+        <p>Loading PDF viewer...</p>
+      </div>
+    </div>
+  )
+});
+
+// Dynamically import the outline and thumbnails components
+const PDFThumbnails = dynamic(() => import('./PDFThumbnails'), { ssr: false });
+const PDFOutline = dynamic(() => import('./PDFOutline'), { ssr: false });
+
+interface PDFViewerProps {
+  fileUrl: string;
+  currentPage?: number;
+  onPageChange?: (page: number) => void;
+  annotations?: Annotation[];
+  showSearchBar?: boolean;
+  onCreateAnnotation?: (annotationData: Partial<Annotation>) => string;
+  activeAnnotationTool?: AnnotationType | null;
+  initialPage?: number;
+  annotationToolbarPosition?: 'top' | 'bottom';
+  externalAnnotationControl?: boolean;
+  onToolChange?: (tool: AnnotationType | null) => void;
+  onTextSelected?: (text: string, boundingRect: any, pageNumber: number) => void;
+  onAnnotationSelected?: (annotation: Annotation) => void;
+  documentOutline?: any[];
+  onDocumentLoaded?: (numPages: number, outline?: any[]) => void;
+  autoScrollToPage?: boolean;
+}
+
+// Add prop to pass to the PDFToolbar
+interface PDFToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
+  // ... existing props ...
+  onShowShortcuts?: () => void;
+}
+
+const PDFViewer: React.FC<PDFViewerProps> = ({
+  fileUrl,
+  currentPage = 1,
+  onPageChange,
+  annotations = [],
+  showSearchBar = true,
+  onCreateAnnotation,
+  activeAnnotationTool: externalActiveAnnotationTool,
+  initialPage = 1,
+  annotationToolbarPosition = 'top',
+  externalAnnotationControl,
+  onToolChange,
+  onTextSelected,
+  documentOutline,
+  onDocumentLoaded,
+  autoScrollToPage
+}) => {
+  // Access context values using React's useContext hook
+  const transformContext = useContext(TransformContext);
+  const scrollContext = useContext(ScrollContext);
+  const uiContext = useContext(UiContext);
+  const documentContext = useContext(DocumentContext);
+  
+  // Destructure the context values
+  const { 
+    scale: contextScale, 
+    setScale: setContextScale,
+    rotation: contextRotation,
+    setRotation: setContextRotation
+  } = transformContext;
+  
+  const {
+    scrollToPage,
+    isPageVisible,
+    setScrollRoot
+  } = scrollContext;
+  
+  const {
+    isLoading: uiIsLoading,
+    setIsLoading: setUiIsLoading,
+    errorMessage,
+    setErrorMessage,
+    isShowingOutline,
+    setIsShowingOutline,
+    isShowingThumbnail,
+    setIsShowingThumbnail
+  } = uiContext;
+  
+  const {
+    numPages: docNumPages,
+    setNumPages: setDocNumPages,
+    outline: docOutline,
+    setOutline: setDocOutline
+  } = documentContext;
+  
+  // Keep some local state for compatibility and UI-specific features
+  const [page, setPage] = useState<number>(currentPage);
+  const [numPages, setNumPages] = useState<number>(0);
+  const [outline, setOutline] = useState<any[]>([]);
+  const [activeAnnotationTool, setActiveAnnotationTool] = useState<AnnotationType | null>(null);
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { state, dispatch } = useAnnotations();
+  const [hasAutoAnnotations, setHasAutoAnnotations] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showOutlinePanel, setShowOutlinePanel] = useState<boolean>(false);
+  const [showThumbnailsPanel, setShowThumbnailsPanel] = useState<boolean>(false);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState<boolean>(false);
+  
+  // Keep local state for scale and rotation
+  const [scale, setScale] = useState(contextScale || 1);
+  const [rotation, setRotation] = useState(contextRotation || 0);
+  
+  // Synchronize local state with context
+  useEffect(() => {
+    if (contextScale && contextScale !== scale) {
+      setScale(contextScale);
+    }
+  }, [contextScale, scale]);
+
+  useEffect(() => {
+    if (contextRotation !== undefined && contextRotation !== rotation) {
+      setRotation(contextRotation);
+    }
+  }, [contextRotation, rotation]);
+  
+  // Update error state to match context
+  useEffect(() => {
+    if (errorMessage) {
+      setError(errorMessage);
+    }
+  }, [errorMessage]);
+  
+  // Set scroll root on component mount
+  useEffect(() => {
+    if (containerRef.current) {
+      setScrollRoot(containerRef.current);
+    }
+  }, [containerRef, setScrollRoot]);
+
+  // Sync the internal and external active annotation tool
+  useEffect(() => {
+    if (externalActiveAnnotationTool !== undefined) {
+      setActiveAnnotationTool(externalActiveAnnotationTool);
+    }
+  }, [externalActiveAnnotationTool]);
+
+  // Update internal page when prop changes
+  useEffect(() => {
+    if (currentPage !== page) {
+      setPage(currentPage);
+    }
+  }, [currentPage]);
+
+  // Update annotation context when page changes
+  useEffect(() => {
+    dispatch({ type: 'SET_CURRENT_PAGE', page });
+  }, [page, dispatch]);
+
+  // Check if we have auto-generated annotations
+  useEffect(() => {
+    if (annotations.some(a => a.isAutoGenerated)) {
+      setHasAutoAnnotations(true);
+    }
+  }, [annotations]);
+
+  // Update handleDocumentLoadSuccess to use context
+  const handleDocumentLoadSuccess = ({ numPages, outline }: { numPages: number, outline?: any[] }) => {
+    // Update both local and context state
+    setNumPages(numPages);
+    setDocNumPages(numPages);
+    setUiIsLoading(false);
+    
+    if (outline) {
+      setOutline(outline);
+      setDocOutline(outline);
+    }
+    
+    // Auto-fit to width on initial load
+    handleFitToWidth();
+  };
+
+  // Update handleDocumentLoadError to use context
+  const handleDocumentLoadError = (err: Error) => {
+    console.error('Error loading PDF document:', err);
+    const errorMessage = `Failed to load the PDF document: ${err.message}`;
+    setError(errorMessage);
+    setErrorMessage(errorMessage);
+    setUiIsLoading(false);
+  };
+
+  // Update handlePageChange to use ScrollContext
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= numPages) {
+      setPage(newPage);
+      
+      // Use the ScrollContext's scrollToPage function
+      scrollToPage({ pageNumber: newPage });
+      
+      if (onPageChange) {
+        onPageChange(newPage);
+      }
+    }
+  };
+
+  // Update zoom and rotation functions to use TransformContext
+  const handleZoomIn = useCallback(() => {
+    const newScale = parseFloat((scale * 1.2).toFixed(1));
+    setScale(newScale);
+    setContextScale(newScale);
+  }, [scale, setContextScale]);
+
+  const handleZoomOut = useCallback(() => {
+    const newScale = parseFloat((scale / 1.2).toFixed(1));
+    setScale(newScale);
+    setContextScale(newScale);
+  }, [scale, setContextScale]);
+
+  const handleRotate = useCallback(() => {
+    const newRotation = (rotation + 90) % 360;
+    setRotation(newRotation);
+    setContextRotation(newRotation);
+  }, [rotation, setContextRotation]);
+
+  // Manual implementation of fit to width
+  const handleFitToWidth = useCallback(() => {
+    if (containerRef.current) {
+      const containerWidth = containerRef.current.clientWidth - 40; // Subtract padding
+      // Use standard A4 width for calculation
+      const pdfWidth = 595; // Standard A4 width in points
+      const newScale = containerWidth / pdfWidth;
+      setScale(newScale);
+      setContextScale(newScale);
+    }
+  }, [containerRef, setContextScale]);
+
+  // Handle outline item click
+  const handleOutlineItemClick = (item: any) => {
+    if (item && typeof item.pageNumber === 'number') {
+      handlePageChange(item.pageNumber);
+    }
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchInput.trim()) return;
+    
+    // Here you would implement actual search functionality
+    // For now, let's simulate it
+    console.log('Searching for:', searchInput);
+    
+    // Dummy search results - in a real app, you'd use PDF.js's text search
+    setSearchResults([
+      { pageNumber: Math.ceil(Math.random() * numPages), text: `Found "${searchInput}" on this page...` },
+      { pageNumber: Math.ceil(Math.random() * numPages), text: `Another match for "${searchInput}"...` }
+    ]);
+  };
+
+  const handleSearchResultClick = (pageNumber: number) => {
+    handlePageChange(pageNumber);
+  };
+
+  // Handle annotation selection
+  const handleAnnotationSelected = (annotation: Annotation) => {
+    console.log('Selection annotation in PDF:', annotation.id);
+    
+    // Set the page if needed
+    if (annotation.pageNumber !== currentPage) {
+      handlePageChange(annotation.pageNumber);
+    }
+    
+    // Find and flash highlight the annotation element
+    setTimeout(() => {
+      const annotationElement = document.querySelector(`[data-annotation-id="${annotation.id}"]`);
+      if (annotationElement) {
+        annotationElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+        
+        // Add a flash highlight
+        annotationElement.classList.add('flash-highlight');
+        setTimeout(() => {
+          annotationElement.classList.remove('flash-highlight');
+        }, 2000);
+      }
+    }, 300); // Small delay to allow page render
+  };
+
+  // Text selection handling
+  const handleTextSelection = (selectedText: string, boundingRect: any, pageNumber: number) => {
+    if (activeAnnotationTool && onCreateAnnotation) {
+      onCreateAnnotation({
+        textSnippet: selectedText,
+        boundingRect: boundingRect,
+        pageNumber: pageNumber,
+        type: activeAnnotationTool,
+        content: selectedText
+      });
+    }
+  };
+
+  // Handle jump to annotation
+  const handleJumpToAnnotation = (annotation: Annotation) => {
+    // Change to the page where the annotation exists
+    if (annotation.pageNumber) {
+      handlePageChange(annotation.pageNumber);
+      
+      // You could also implement scrolling to the annotation
+      // This would require tracking rendered annotations' positions
+    }
+  };
+  
+  // Mock function for generating annotations
+  const handleGenerateAnnotations = () => {
+    console.log('Generating auto annotations...');
+    // In a real implementation, this would trigger an API call
+    // to generate annotations for the document
+    
+    // For now, let's create some dummy auto annotations
+    if (onCreateAnnotation) {
+      // Simulate an API delay
+      setTimeout(() => {
+        // Create some sample auto annotations
+        const dummyAnnotations = [
+          {
+            textSnippet: "This is an important insight about the document content.",
+            boundingRect: { x: 100, y: 200, width: 300, height: 20 },
+            pageNumber: 1,
+            type: AnnotationType.KEY_INSIGHT,
+            isAutoGenerated: true,
+            importance: 5
+          },
+          {
+            textSnippet: "This term refers to a specific concept in the domain.",
+            boundingRect: { x: 150, y: 350, width: 250, height: 20 },
+            pageNumber: 1,
+            type: AnnotationType.DEFINITION,
+            isAutoGenerated: true,
+            importance: 4
+          }
+        ];
+        
+        // Add the annotations
+        dummyAnnotations.forEach(annotation => {
+          onCreateAnnotation(annotation);
+        });
+        
+        setHasAutoAnnotations(true);
+      }, 1500);
+    }
+  };
+
+  // Add right before the return statement
+  useEffect(() => {
+    // Register as listener for scroll events
+    const scrollListener = (position: ScrollPosition) => {
+      // Handle page changes
+      if (position.pageNumber && position.pageNumber !== currentPage) {
+        handlePageChange(position.pageNumber);
+      }
+      
+      // Handle annotation focus
+      if (position.annotationId) {
+        const annotation = annotations.find(a => a.id === position.annotationId);
+        if (annotation) {
+          handleAnnotationSelected(annotation);
+        }
+      }
+    };
+    
+    scrollService.addListener('pdf-viewer', scrollListener);
+    
+    return () => {
+      scrollService.removeListener('pdf-viewer');
+    };
+  }, [annotations, currentPage, handlePageChange, handleAnnotationSelected]);
+
+  const renderAnnotationModeIndicator = () => {
+    if (!activeAnnotationTool) return null;
+    
+    let icon;
+    let label;
+    let className;
+    
+    switch (activeAnnotationTool) {
+      case AnnotationType.HIGHLIGHT:
+        icon = <Highlighter className="h-4 w-4" />;
+        label = "Highlight Mode";
+        className = "annotation-mode-highlight";
+        break;
+      case AnnotationType.NOTE:
+        icon = <MessageSquare className="h-4 w-4" />;
+        label = "Note Mode";
+        className = "annotation-mode-note";
+        break;
+      case AnnotationType.DRAW:
+        icon = <PenTool className="h-4 w-4" />;
+        label = "Draw Mode";
+        className = "annotation-mode-draw";
+        break;
+      case AnnotationType.COMMENT:
+        icon = <FileText className="h-4 w-4" />;
+        label = "Comment Mode";
+        className = "annotation-mode-comment";
+        break;
+      default:
+        return null;
+    }
+    
+    return (
+      <div className={`annotation-mode ${className}`}>
+        {icon}
+        <span>{label}</span>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-5 w-5 ml-2" 
+          onClick={() => toggleAnnotationTool(activeAnnotationTool)}
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  };
+
+  // Update toggleOutlinePanel to use UiContext
+  const toggleOutlinePanel = () => {
+    const newValue = !showOutlinePanel;
+    setShowOutlinePanel(newValue);
+    setIsShowingOutline(newValue);
+    
+    // Close thumbnails if opening outline
+    if (newValue) {
+      setShowThumbnailsPanel(false);
+      setIsShowingThumbnail(false);
+    }
+  };
+
+  // Update toggleThumbnailsPanel to use UiContext
+  const toggleThumbnailsPanel = () => {
+    const newValue = !showThumbnailsPanel;
+    setShowThumbnailsPanel(newValue);
+    setIsShowingThumbnail(newValue);
+    
+    // Close outline if opening thumbnails
+    if (newValue) {
+      setShowOutlinePanel(false);
+      setIsShowingOutline(false);
+    }
+  };
+
+  // Inside the PDFViewer component, before the return statement
+  const scaleOptions = [
+    { value: 0.5, label: '50%' },
+    { value: 0.75, label: '75%' },
+    { value: 1.0, label: '100%' },
+    { value: 1.25, label: '125%' },
+    { value: 1.5, label: '150%' },
+    { value: 2.0, label: '200%' }
+  ];
+
+  // Move the toggleAnnotationTool function before the keyboard event handler useEffect
+  // Add this after the handleFitToWidth function and before all keyboard handling
+  const toggleAnnotationTool = (tool: AnnotationType | null) => {
+    const newToolState = activeAnnotationTool === tool ? null : tool;
+    setActiveAnnotationTool(newToolState);
+  };
+
+  // Add the keyboard event handlers after the existing useEffect hooks
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || 
+          e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Navigation shortcuts
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        handlePageChange(page - 1);
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        e.preventDefault();
+        handlePageChange(page + 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        handlePageChange(1);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        handlePageChange(numPages);
+      }
+      
+      // Zoom shortcuts
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        handleZoomIn();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        handleZoomOut();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        handleFitToWidth();
+      }
+      
+      // Annotation tool shortcuts
+      if (e.key === 'h' || e.key === 'H') {
+        toggleAnnotationTool(AnnotationType.HIGHLIGHT);
+      } else if (e.key === 'n' || e.key === 'N') {
+        toggleAnnotationTool(AnnotationType.NOTE);
+      } else if (e.key === 'c' || e.key === 'C') {
+        toggleAnnotationTool(AnnotationType.COMMENT);
+      } else if (e.key === 'd' || e.key === 'D') {
+        toggleAnnotationTool(AnnotationType.DRAW);
+      } else if (e.key === 'Escape') {
+        if (activeAnnotationTool) {
+          toggleAnnotationTool(activeAnnotationTool);
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [page, numPages, activeAnnotationTool, handleZoomIn, handleZoomOut, handleFitToWidth, handlePageChange, toggleAnnotationTool]);
+
+  // Add toggle state for context panel
+  const [isContextPanelVisible, setIsContextPanelVisible] = useState(true);
+  
+  // Add handlers for toolbar actions
+  const handleToggleContextPanel = useCallback(() => {
+    setIsContextPanelVisible(prev => !prev);
+  }, []);
+  
+  const handleAnnotateFromToolbar = useCallback(() => {
+    setActiveAnnotationTool('annotation' as AnnotationType);
+    if (onToolChange) onToolChange('annotation' as AnnotationType);
+  }, [onToolChange]);
+  
+  const handleHighlightFromToolbar = useCallback(() => {
+    setActiveAnnotationTool('highlight' as AnnotationType);
+    if (onToolChange) onToolChange('highlight' as AnnotationType);
+  }, [onToolChange]);
+  
+  const handleCommentFromToolbar = useCallback(() => {
+    setActiveAnnotationTool('comment' as AnnotationType);
+    if (onToolChange) onToolChange('comment' as AnnotationType);
+  }, [onToolChange]);
+
+  const handleNextPage = useCallback(() => {
+    handlePageChange(page + 1);
+  }, [page, handlePageChange]);
+
+  const handlePrevPage = useCallback(() => {
+    handlePageChange(page - 1);
+  }, [page, handlePageChange]);
+
+  const handleToolbarSearch = useCallback((searchText: string) => {
+    console.log('Searching for:', searchText);
+    // Implement the search functionality here
+    setSearchInput(searchText);
+    // Simulate search results
+    setSearchResults([
+      { pageNumber: Math.ceil(Math.random() * numPages), text: `Found "${searchText}" on this page...` },
+      { pageNumber: Math.ceil(Math.random() * numPages), text: `Another match for "${searchText}"...` }
+    ]);
+  }, [numPages]);
+
+  const handleDownload = useCallback(() => {
+    console.log('Downloading PDF');
+    // Implement download
+    window.open(fileUrl, '_blank');
+  }, [fileUrl]);
+
+  const handlePrint = useCallback(() => {
+    console.log('Printing PDF');
+    window.print();
+  }, []);
+
+  return (
+    <ContextProvider>
+      <div className="flex flex-col h-full relative" ref={containerRef}>
+        {/* Enhanced PDFToolbar with shortcut dialog support */}
+        <PDFToolbar
+          currentPage={page}
+          totalPages={numPages}
+          zoomLevel={scale}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onNextPage={handleNextPage}
+          onPrevPage={handlePrevPage}
+          onPageChange={handlePageChange}
+          onSearch={handleToolbarSearch}
+          onAnnotate={handleAnnotateFromToolbar}
+          onHighlight={handleHighlightFromToolbar}
+          onComment={handleCommentFromToolbar}
+          onToggleContextPanel={handleToggleContextPanel}
+          onDownload={handleDownload}
+          onPrint={handlePrint}
+          onRotate={handleRotate}
+          onShowShortcuts={() => setShowShortcutsDialog(true)}
+        />
+        
+        <div className="flex flex-1 overflow-hidden">
+          {/* Side panels - Outline/Thumbnails */}
+          {(showOutlinePanel || showThumbnailsPanel) && (
+            <div className="w-64 border-r border-border bg-background overflow-y-auto">
+              {showOutlinePanel && outline && outline.length > 0 && (
+                <PDFOutline outline={outline} onItemClick={handleOutlineItemClick} />
+              )}
+              {showThumbnailsPanel && (
+                <PDFThumbnails 
+                  fileUrl={fileUrl} 
+                  currentPage={page} 
+                  numPages={numPages} 
+                  onPageChange={handlePageChange} 
+                />
+              )}
+            </div>
+          )}
+          
+          {/* Main PDF View */}
+          <div className="flex-1 overflow-auto">
+            {error ? (
+              <div className="flex flex-col items-center justify-center h-full p-4">
+                <AlertCircle className="h-10 w-10 text-red-500 mb-4" />
+                <h3 className="text-lg font-medium mb-2">Error Loading PDF</h3>
+                <p className="text-muted-foreground text-center max-w-md">{error}</p>
+              </div>
+            ) : (
+              <PDFErrorBoundary
+                onError={(err) => {
+                  setError(`Failed to load PDF: ${err.message}`);
+                  setUiIsLoading(false);
+                }}
+              >
+                <PDFComponents
+                  fileUrl={fileUrl}
+                  currentPage={page}
+                  scale={scale}
+                  rotation={rotation}
+                  annotations={annotations}
+                  onDocumentLoadSuccess={handleDocumentLoadSuccess}
+                  onPageChange={handlePageChange}
+                  onTextSelection={handleTextSelection}
+                  activeAnnotationTool={activeAnnotationTool}
+                  onAnnotationSelected={handleAnnotationSelected}
+                />
+              </PDFErrorBoundary>
+            )}
+          </div>
+        </div>
+        
+        {/* Keyboard shortcuts dialog */}
+        <Dialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Keyboard className="h-5 w-5" />
+                Keyboard Shortcuts
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Zoom In</span>
+                <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl +</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Zoom Out</span>
+                <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl -</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Next Page</span>
+                <kbd className="px-2 py-1 bg-muted rounded text-xs">→</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Previous Page</span>
+                <kbd className="px-2 py-1 bg-muted rounded text-xs">←</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Fit to Width</span>
+                <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl W</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Search</span>
+                <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl F</kbd>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </ContextProvider>
+  );
+};
+
+export default PDFViewer;

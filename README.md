@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PDF Annotation Application
 
-## Getting Started
+A modern PDF viewer and annotation tool for legal documents. This application utilizes the professional @allenai/pdf-components library and follows Next.js 15 App Router best practices.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Document Viewer:** Advanced PDF viewing with zooming, rotating, and page navigation
+- **Annotation Tools:** Highlight text, add notes, and create comments
+- **Context Panels:** Sidebar for viewing annotations and file navigation
+- **Modern UI:** Clean, responsive interface with modern design patterns
+- **CORS-Free Worker:** Specialized PDF.js worker handling to avoid common CORS issues
+
+## Project Structure
+
+The project follows Next.js 15 App Router conventions:
+
+```
+my-app/
+├── app/                    # Next.js App Router pages
+│   ├── workspace/          # Main application workspace
+│   │   ├── viewer/         # PDF viewer page
+│   │   └── ...
+├── components/             # Reusable React components
+│   ├── context_panel/      # Sidebar and context panels
+│   ├── pdf_viewer/         # PDF viewer components
+│   ├── ui/                 # UI components (buttons, inputs, etc.)
+│   └── ...
+├── lib/                    # Utility functions and services
+│   ├── pdf-setup.ts        # PDF.js configuration
+│   └── ...
+├── public/                 # Static assets
+│   ├── pdfjs-worker-shim.js # PDF.js worker shim for CORS handling
+│   └── ...
+└── proxy/                  # PDF.js worker proxy server
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Development Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To run the application with the PDF.js worker proxy:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Start the PDF.js worker proxy server:
 
-## Learn More
+```bash
+# Install dependencies (first time only)
+cd proxy
+npm install
 
-To learn more about Next.js, take a look at the following resources:
+# Start the proxy server
+npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. In a separate terminal, start the Next.js development server:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# From the project root
+npm run dev
+```
 
-## Deploy on Vercel
+3. Visit http://localhost:3000 to access the application
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Enhanced PDF.js Worker Handling
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application uses several techniques to ensure the PDF.js worker loads correctly without CORS issues:
+
+1. **Blob URL Creation**: The app fetches the worker script and creates a blob URL from it, which avoids CORS entirely.
+
+2. **Memory Caching**: The proxy server caches the worker script in memory for faster subsequent requests.
+
+3. **Disk Backup**: The worker script is saved to disk as a backup in case the CDN is unavailable.
+
+4. **Dynamic Import Patching**: The app intercepts dynamic imports that try to load workers from CDNs.
+
+5. **Worker Shim**: A minimal worker implementation is provided as a fallback for environments where other methods fail.
+
+## Integration with @allenai/pdf-components
+
+This application leverages the professional @allenai/pdf-components library for PDF rendering and management. The library provides:
+
+- `DocumentWrapper`: For handling PDF document loading and state
+- `PageWrapper`: For rendering individual PDF pages
+- `HighlightOverlay`: For displaying highlights on PDF pages
+- Various context providers for document state management
+
+Custom UI components are built on top of these foundational components to create a cohesive and feature-rich application.
+
+## Browser Compatibility
+
+The application is designed to work in modern browsers:
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+
+## License
+
+MIT License
+
+
+
+
+
+you need to clean up the project !!! we made a lot of tempfiles or refactored file that where initially been used and now not!!!
+
+the only valid application is @workspace all the files / configurations / components / and routes that not support this application and are not used at the moment (no reference) should be cleaned up!!!!!
+
+i make somthing very clear!!! the components initially where based on the logic form the @@allenai/pdf-components  library and still shall be!!! this is very important as i do not want any costume logic that i can get form this proffesional library!!!!!! 
+
+i only want costume UI which this is what we do!!!
+
+if everything is clear then please clean up and reorgenize according to the most bestpracties of the nextjs 15 approuter applications!!!!
+
+and see the  github of the pdf-components library for further understdanding!!
+@Web @https://github.com/allenai/pdf-component-library/tree/main 
+

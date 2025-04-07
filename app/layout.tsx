@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { setupPromisePolyfill } from "@/lib/promise-polyfill";
+import { AnnotationProvider } from "@/components/context_panel/annotations/AnnotationProvider";
+
+// Initialize Promise.withResolvers polyfill
+setupPromisePolyfill();
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,10 +29,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Preload the PDF worker script for better performance */}
+        <link 
+          rel="preload" 
+          href="/pdf-worker/pdf.worker.min.mjs" 
+          as="script" 
+          crossOrigin="anonymous" 
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
-        {children}
+        <AnnotationProvider>
+          {children}
+        </AnnotationProvider>
       </body>
     </html>
   );
