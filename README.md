@@ -99,16 +99,3 @@ MIT License
 
 
 
-you need to clean up the project !!! we made a lot of tempfiles or refactored file that where initially been used and now not!!!
-
-the only valid application is @workspace all the files / configurations / components / and routes that not support this application and are not used at the moment (no reference) should be cleaned up!!!!!
-
-i make somthing very clear!!! the components initially where based on the logic form the @@allenai/pdf-components  library and still shall be!!! this is very important as i do not want any costume logic that i can get form this proffesional library!!!!!! 
-
-i only want costume UI which this is what we do!!!
-
-if everything is clear then please clean up and reorgenize according to the most bestpracties of the nextjs 15 approuter applications!!!!
-
-and see the  github of the pdf-components library for further understdanding!!
-@Web @https://github.com/allenai/pdf-component-library/tree/main 
-
