@@ -1,13 +1,18 @@
 'use client';
 
 // Import the centralized PDF setup
-import '@/lib/pdf-setup';
+import { initializePdf } from '@/lib/pdf-setup';
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAnnotations } from '@/components/context_panel/annotations/AnnotationProvider';
 import { AlertCircle, FileWarning } from 'lucide-react';
+
+// Initialize PDF setup early
+initializePdf().catch(err => {
+  console.error('Failed to initialize PDF setup:', err);
+});
 
 // Dynamically import the PDFViewer component to avoid SSR issues
 const PDFViewer = dynamic(

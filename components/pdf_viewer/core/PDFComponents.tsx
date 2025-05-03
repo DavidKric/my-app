@@ -1,26 +1,38 @@
 'use client';
 
-// Import the centralized PDF setup - this now configures the worker path
-import '@/lib/pdf-setup';
+// Import the centralized PDF setup
+import { initializePdf, getPdfOptions } from '@/lib/pdf-setup';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-// Import Document and Page from react-pdf
-import { Document, Page, pdfjs } from 'react-pdf';
+import React, { useState, useEffect, useCallback, useRef, useContext, useMemo } from 'react';
+// Import pdfjs for types only (worker setup is handled by pdf-setup.ts)
+import { pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
-
+import { 
+  DocumentWrapper, 
+  PageWrapper, 
+  HighlightOverlay,
+  BoundingBox,
+  RENDER_TYPE,
+  TransformContext,
+  ScrollContext,
+  DocumentContext,
+  UiContext,
+  Overlay
+} from '@allenai/pdf-components';
 import { AnnotationOverlay, Annotation, AnnotationType } from '../annotations/AnnotationOverlay';
 import PDFErrorBoundary from './PDFErrorBoundary';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
-// Types remain the same
+// Get PDF options from our setup
+const pdfOptions = getPdfOptions();
+
 interface PDFComponentsProps {
   fileUrl: string;
   currentPage: number;
   scale: number;
   rotation?: number;
   onDocumentLoadSuccess: (data: { numPages: number, outline?: any[] }) => void;
-  onDocumentLoadError?: (err: Error) => void;
   onPageChange?: (pageNumber: number) => void;
   activeAnnotationTool?: AnnotationType | null;
   annotations?: Annotation[];
@@ -28,215 +40,263 @@ interface PDFComponentsProps {
   onAnnotationSelected?: (annotation: Annotation) => void;
 }
 
-// Normalize function remains the same
-const normalizeFileUrl = (url: string): string => {
-  if (!url) {
-    console.error('[normalizeFileUrl] No URL provided');
-    return '';
-  }
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  if (typeof window === 'undefined') {
-    return url; // Cannot resolve further without window
-  }
-  // Ensure it starts with a slash if it's a local path
-  if (!url.startsWith('/')) {
-      url = '/' + url;
-  }
-  // Avoid double origin if url already contains it (e.g. from proxy)
-  if (url.startsWith(window.location.origin)) {
-      return url;
-  }
-  // Construct full URL for relative/absolute paths
-  try {
-    // Use URL constructor for robust handling
-    return new URL(url, window.location.origin).toString();
-  } catch (e) {
-    console.error(`[normalizeFileUrl] Failed to construct URL for: ${url}`, e);
-    return url; // Fallback to original url if construction fails
-  }
-};
-
 export default function PDFComponents({ 
   fileUrl, 
   currentPage, 
   scale, 
   rotation = 0,
   onDocumentLoadSuccess,
-  onDocumentLoadError,
-  // onPageChange not used directly by react-pdf,
+  onPageChange,
   activeAnnotationTool,
   annotations = [],
   onTextSelection,
   onAnnotationSelected
 }: PDFComponentsProps) {
+  // Use contexts from Allen AI library
+  const documentContext = useContext(DocumentContext);
+  const scrollContext = useContext(ScrollContext);
+  const uiContext = useContext(UiContext);
+  const transformContext = useContext(TransformContext);
+  
+  // Get values from contexts
+  const { 
+    setNumPages: setDocNumPages, 
+    setOutline: setDocOutline, 
+    setPdfDocProxy
+  } = documentContext || {};
+  
+  const { 
+    visiblePageRatios = new Map(), 
+    pagesScrolledIntoView 
+  } = scrollContext || {};
+  
+  const { 
+    isLoading: uiIsLoading, 
+    setIsLoading: setUiIsLoading,
+    setErrorMessage
+  } = uiContext || {};
+
+  const {
+    scale: transformScale,
+    rotation: transformRotation
+  } = transformContext || {};
+  
+  // Keep some local state for compatibility
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
-
-  // Normalize the URL once
-  const normalizedFileUrl = useMemo(() => normalizeFileUrl(fileUrl), [fileUrl]);
   
-  // Log worker configuration on mount
+  // Use visible pages from context instead of maintaining local state
+  const visiblePages = Array.from(visiblePageRatios.keys());
+  
+  // We still need refs for local component behavior
+  const pageRefsMap = useRef<Map<number, HTMLDivElement | null>>(new Map());
+  
+  // Ensure PDF.js is initialized
   useEffect(() => {
-    console.log('[PDF Components] Initializing with worker src:', pdfjs.GlobalWorkerOptions.workerSrc || 'NOT SET');
+    initializePdf()
+      .then(() => {
+        console.log('[PDF Components] Worker initialized successfully');
+      })
+      .catch(err => {
+        console.error('[PDF Components] Error initializing worker:', err);
+        setError('Failed to initialize PDF viewer. Please try reloading the page.');
+      });
+    
+    // Log the worker source for debugging
+    console.log('[PDF Components] Worker source:', pdfjs.GlobalWorkerOptions.workerSrc || 'NOT SET');
   }, []);
-
-  // Simplify the options object for react-pdf Document
-  const pdfOptions = useMemo(() => ({
-    cMapUrl: 'https://unpkg.com/pdfjs-dist/cmaps/',
-    cMapPacked: true
-  }), []);
-
-  // Handle document load success
-  const handleLoadSuccess = useCallback((pdf: any) => {
-    console.log(`[PDF Components] Document loaded successfully. Pages: ${pdf.numPages}`);
-    setNumPages(pdf.numPages);
+  
+  // Memoized callback for setting the ref
+  const setPageRef = useCallback((pageNumber: number, node: HTMLDivElement | null) => {
+    // Store the ref in our Map
+    if (node !== null) {
+      pageRefsMap.current.set(pageNumber, node);
+    } else {
+      pageRefsMap.current.delete(pageNumber);
+    }
+  }, []);
+  
+  // Handle document loading success
+  const handleLoadSuccess = useCallback((pdfDoc: any) => {
+    const { numPages = 0, outline = [] } = pdfDoc || {};
+    
+    // Set local state
+    setNumPages(numPages);
     setLoading(false);
-    setError(null);
+    
+    // Update context state if available
+    if (setDocNumPages) setDocNumPages(numPages);
+    if (setDocOutline && outline) setDocOutline(outline);
+    if (setPdfDocProxy) setPdfDocProxy(pdfDoc);
+    
+    // Notify parent
     if (onDocumentLoadSuccess) {
-      onDocumentLoadSuccess({ numPages: pdf.numPages, outline: [] });
+      onDocumentLoadSuccess({ numPages, outline });
     }
-  }, [onDocumentLoadSuccess]);
-
-  // Handle document load error - simplified
+  }, [onDocumentLoadSuccess, setDocNumPages, setDocOutline, setPdfDocProxy]);
+  
+  // Handle document loading error
   const handleLoadError = useCallback((err: Error) => {
-    console.error('[PDF Components] Error loading document:', err);
-    setError(`Failed to load PDF: ${err.message}`);
+    console.error('Error loading PDF document:', err);
+    setError(err.message);
     setLoading(false);
-    if (onDocumentLoadError) {
-      onDocumentLoadError(err);
+    
+    // Update context state if available
+    if (setErrorMessage) setErrorMessage(err.message);
+  }, [setErrorMessage]);
+  
+  // Handle visible pages changes
+  useEffect(() => {
+    if (visiblePages.length > 0 && onPageChange) {
+      // Find the most visible page (highest visibility ratio)
+      let maxVisibility = 0;
+      let mostVisiblePage = currentPage;
+      
+      for (const [page, ratio] of visiblePageRatios.entries()) {
+        if (ratio > maxVisibility) {
+          maxVisibility = ratio;
+          mostVisiblePage = page;
+        }
+      }
+      
+      // Only call onPageChange if the most visible page has changed
+      if (mostVisiblePage !== currentPage) {
+        onPageChange(mostVisiblePage);
+      }
     }
-  }, [onDocumentLoadError]);
-
-  // Text selection handler - simplified
-  const handleTextSelect = useCallback(() => {
+  }, [visiblePageRatios, currentPage, onPageChange]);
+  
+  // Handle text selection for annotations
+  const handleTextSelection = useCallback((pageNumber: number) => (e: React.MouseEvent) => {
     if (!onTextSelection || !activeAnnotationTool) return;
+    
+    // Get the selection from the window
     const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) return;
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+    
+    // Get the selected text
+    const selectedText = selection.toString().trim();
+    if (!selectedText) return;
+    
+    // Get the parent PDF container
+    const pdfContainer = pageRefsMap.current.get(pageNumber);
+    if (!pdfContainer) return;
+    
+    // Get the selection range and its bounding client rect
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    // Calculate position relative to the PDF container
+    const containerRect = pdfContainer.getBoundingClientRect();
+    const boundingRect = {
+      x: rect.left - containerRect.left,
+      y: rect.top - containerRect.top,
+      width: rect.width,
+      height: rect.height,
+      pageNumber
+    };
+    
+    // Call the callback with selected text and position
+    onTextSelection(selectedText, boundingRect, pageNumber);
+    
+    // Clear selection
     selection.removeAllRanges();
   }, [onTextSelection, activeAnnotationTool]);
-
-  // Page ref setter
-  const setPageRef = useCallback((pageNumber: number, element: HTMLDivElement | null) => {
-    if (element) {
-      pageRefs.current.set(pageNumber, element);
-    } else {
-      pageRefs.current.delete(pageNumber);
-    }
-  }, []);
-
-  // Loading indicator
-  const LoadingIndicator = useCallback(() => (
-    <div className="w-full h-full flex items-center justify-center min-h-96 absolute top-0 left-0 z-10 bg-background/80">
-      <div className="text-center">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-        <p>Loading PDF document...</p>
+  
+  // Render content based on loading state
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+          <p>Loading PDF document...</p>
+        </div>
       </div>
-    </div>
-  ), []);
-
-  // Error display
-  const ErrorDisplay = useCallback(({ message }: { message: string }) => (
-    <div className="w-full h-full flex items-center justify-center min-h-96 p-4">
-      <div className="text-center max-w-lg p-6 bg-destructive/10 border border-destructive/30 rounded-lg">
-        <AlertTriangle className="h-10 w-10 text-destructive mx-auto mb-3" />
-        <p className="text-destructive font-semibold text-lg mb-2">Error loading PDF</p>
-        <p className="text-sm text-destructive/90 mb-3">{message}</p>
-        <button 
-          className="mt-4 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          onClick={() => window.location.reload()}
-        >
-          Reload Page
-        </button>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center min-h-96">
+        <div className="text-center max-w-lg">
+          <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+          <p className="text-destructive font-medium">Error loading PDF document:</p>
+          <p className="text-sm mt-2">{error}</p>
+        </div>
       </div>
-    </div>
-  ), []);
-
+    );
+  }
+  
+  // Filter annotations for the current page to keep rendering efficient
+  const filteredAnnotations = annotations.filter(a => a.pageNumber === currentPage);
+  
   return (
-    <div 
-      className="pdf-container w-full h-full relative overflow-auto" 
-      ref={containerRef} 
-      style={{ WebkitOverflowScrolling: 'touch' }}
-    >
-      {/* Show error overlay if error exists */}
-      {error && !loading && <ErrorDisplay message={error} />}
-      
-      {/* Render PDF document */}
-      <Document
-        file={normalizedFileUrl}
+    <div className="pdf-container w-full h-full relative">
+      <DocumentWrapper 
+        file={fileUrl}
         onLoadSuccess={handleLoadSuccess}
         onLoadError={handleLoadError}
-        loading={<LoadingIndicator />}
+        renderType={RENDER_TYPE.SINGLE_CANVAS}
+        className="w-full"
         options={pdfOptions}
-        className={error ? "hidden" : ""}
       >
-        {Array.from(new Array(numPages), (_, index) => {
+        {Array.from(new Array(numPages)).map((_, index) => {
           const pageNumber = index + 1;
           
-          // Render only current page and 1 page before/after for performance
-          const isVisible = Math.abs(pageNumber - currentPage) <= 1;
-
+          // Check if we should render this page
+          const shouldRenderPage = 
+            Math.abs(pageNumber - currentPage) <= 3 || // Render nearby pages
+            visiblePages.includes(pageNumber);         // And visible pages
+            
           return (
             <div 
               key={`page-container-${pageNumber}`}
-              ref={(el) => setPageRef(pageNumber, el)}
-              className="pdf-page-container flex justify-center mb-4"
+              ref={node => setPageRef(pageNumber, node)}
+              data-page-number={pageNumber}
+              className="pdf-page-container mb-8"
             >
-              <PDFErrorBoundary>
-                <div 
-                  className="relative pdf-page-wrapper"
-                  onMouseUp={handleTextSelect}
-                >
-                  {isVisible ? (
-                    <Page
-                      key={`page_${pageNumber}`}
-                      pageNumber={pageNumber}
-                      scale={scale}
-                      rotate={rotation}
-                      renderAnnotationLayer={false} // Disable for first attempt
-                      renderTextLayer={false}       // Disable for first attempt
-                      className="bg-white shadow-md"
-                      loading={
-                        <div 
-                          className="bg-muted/30 animate-pulse shadow-md" 
-                          style={{ 
-                            width: `${scale * 595}px`, 
-                            height: `${scale * 842}px` 
-                          }}
+              {shouldRenderPage ? (
+                <PDFErrorBoundary>
+                  <div 
+                    className="relative" 
+                    data-pdf-page-number={pageNumber}
+                    onMouseUp={handleTextSelection(pageNumber)}
+                  >
+                    {/* Main PDF Page */}
+                    <PageWrapper
+                      key={`page-${pageNumber}`}
+                      pageIndex={pageNumber - 1} // PageWrapper uses 0-indexed pages
+                      className="bg-white shadow-md mx-auto"
+                      renderType={RENDER_TYPE.SINGLE_CANVAS}
+                    />
+                    
+                    {/* Annotation Overlay with proper props */}
+                    {pageNumber === currentPage && (
+                      <div className="absolute top-0 left-0 right-0 bottom-0">
+                        <AnnotationOverlay 
+                          annotations={filteredAnnotations}
+                          scale={scale}
+                          onAnnotationClick={onAnnotationSelected}
+                          currentPage={pageNumber}
                         />
-                      }
-                    />
-                  ) : (
-                    <div 
-                      className="w-full bg-muted/20 shadow-md"
-                      style={{ 
-                        width: `${scale * 595}px`,
-                        height: `${scale * 842}px`
-                      }}
-                    />
-                  )}
-                  
-                  {/* Annotation Overlay - only for visible current page */}
-                  {isVisible && pageNumber === currentPage && annotations && annotations.length > 0 && (
-                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                      <AnnotationOverlay 
-                        annotations={annotations.filter(a => a.pageNumber === pageNumber)}
-                        scale={scale}
-                        onAnnotationClick={onAnnotationSelected}
-                        currentPage={pageNumber}
-                      />
-                    </div>
-                  )}
-                </div>
-              </PDFErrorBoundary>
+                      </div>
+                    )}
+                  </div>
+                </PDFErrorBoundary>
+              ) : (
+                <div 
+                  className="w-full bg-muted/20 animate-pulse shadow-md"
+                  style={{ 
+                    height: '800px',
+                    aspectRatio: '1 / 1.4142' // A4 aspect ratio
+                  }}
+                />
+              )}
             </div>
           );
         })}
-      </Document>
+      </DocumentWrapper>
     </div>
   );
 } 

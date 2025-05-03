@@ -1,6 +1,6 @@
 'use client';
 
-// Make TypeScript happy with our window property
+// Define the global types for PDF.js
 declare global {
   interface Window {
     _PDFJS_WORKER_CONFIGURED?: boolean;
@@ -10,90 +10,84 @@ declare global {
 
 import { pdfjs } from 'react-pdf';
 
-// Minimal worker code that implements just enough to get basic PDF rendering working
-// This avoids any external file dependencies which can be problematic in Next.js
-const createMinimalWorkerBlob = () => {
-  // Basic worker implementation that handles essential PDF.js operations
-  const workerCode = `
-    self.onmessage = function(event) {
-      const data = event.data;
-      
-      if (!data || !data.action) {
-        return;
-      }
-      
-      // For most operations, just return a successful response
-      // This is enough to get basic rendering working
-      const response = { success: true };
-      
-      // Add requestId if it was part of the request
-      if (data.data && data.data.requestId) {
-        response.requestId = data.data.requestId;
-      }
-      
-      self.postMessage({
-        action: data.action + '_response', 
-        data: response
-      });
-    };
-    
-    // Tell PDF.js we're ready
-    self.postMessage({ action: 'worker_ready' });
-  `;
-  
-  try {
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    return URL.createObjectURL(blob);
-  } catch (e) {
-    console.error('[PDF Setup] Failed to create worker blob:', e);
-    return null;
-  }
+// Configuration options for the PDF components
+const PDF_OPTIONS = {
+  cMapUrl: '/cmaps/',  // Local cmaps
+  cMapPacked: true,
+  standardFontDataUrl: '/standard_fonts/',  // Local fonts
 };
 
-// Function to initialize PDF.js worker using direct blob URL
+// PDF.js version
+const PDFJS_VERSION = pdfjs.version;
+
+// Determine the environment
+const isProd = process.env.NODE_ENV === 'production';
+const isSSR = typeof window === 'undefined';
+
+/**
+ * Initialize the PDF.js worker - this function handles both local and production environments
+ * and ensures the worker is only set up once
+ */
 export function initializePdf() {
-  // Safety check for server-side rendering
-  if (typeof window === 'undefined') {
-    return;
+  // Skip if running on server-side
+  if (isSSR) {
+    return Promise.resolve();
   }
 
   // Prevent initializing multiple times
   if (window._PDFJS_WORKER_CONFIGURED) {
     console.log('[PDF Setup] Worker already configured.');
-    return;
+    return Promise.resolve();
   }
 
   try {
-    console.log(`[PDF Setup] Configuring PDF.js ${pdfjs.version} worker with embedded code`);
+    console.log(`[PDF Setup] Configuring PDF.js ${PDFJS_VERSION} worker`);
 
-    // Create blob URL from minimal worker code
-    const blobUrl = createMinimalWorkerBlob();
-    
-    if (!blobUrl) {
-      throw new Error('Failed to create worker blob URL');
+    // Determine the worker URL based on environment
+    let workerUrl;
+
+    // In development, we can use a CDN for simplicity
+    // In production, we'll use a worker that gets bundled with the app
+    if (isProd) {
+      // In production, use the local worker file that will be placed in /public
+      workerUrl = '/pdf.worker.min.js';
+    } else {
+      // In development, use the CDN version
+      workerUrl = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`;
     }
-    
-    // Set the worker source to our blob URL
-    console.log(`[PDF Setup] Setting workerSrc to blob URL`);
-    pdfjs.GlobalWorkerOptions.workerSrc = blobUrl;
-    
-    // Make sure pdfjsLib is globally available if needed
+
+    console.log(`[PDF Setup] Using worker from: ${workerUrl}`);
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
+    // Make pdfjsLib globally available
     if (!window.pdfjsLib) {
       window.pdfjsLib = pdfjs;
     }
 
     // Mark as configured
     window._PDFJS_WORKER_CONFIGURED = true;
-    console.log(`[PDF Setup] PDF.js worker configured successfully with embedded code`);
-    
+    console.log(`[PDF Setup] PDF.js worker configured successfully`);
+
+    // Return a resolved promise
+    return Promise.resolve();
   } catch (error) {
     console.error('[PDF Setup] Error configuring PDF.js worker:', error);
+    return Promise.reject(error);
   }
 }
 
-// Ensure initialization runs when this module is imported on the client
-if (typeof window !== 'undefined') {
-  initializePdf();
+/**
+ * Get PDF options for the Document component
+ */
+export function getPdfOptions() {
+  return PDF_OPTIONS;
+}
+
+// Auto-initialize when this module is imported on client-side
+if (!isSSR) {
+  initializePdf().catch(error => {
+    console.error('[PDF Setup] Failed to initialize PDF worker:', error);
+  });
 }
 
 export default initializePdf; 
