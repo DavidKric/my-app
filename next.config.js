@@ -6,6 +6,10 @@ const nextConfig = {
   // Add Turbopack's loader config at the top level:
   experimental: {
     turbo: {
+      // Add resolveAlias configuration for Turbopack
+      resolveAlias: {
+        canvas: './empty-module.js',
+      },
       rules: {
         // Tell Turbopack to use less-loader for .less files
         '*.less': {
@@ -16,14 +20,14 @@ const nextConfig = {
     },
     // Add preload configuration to mitigate preload warnings
     optimizeCss: true,
-    optimizePackageImports: ['@allenai/pdf-components', 'react-pdf', 'pdfjs-dist']
+    optimizePackageImports: ['@allenai/pdf-components']
   },
 
   webpack: (config, { dev, isServer }) => {
-    // Properly handle PDF.js worker files
-    config.resolve.alias.canvas = false; // Disable canvas dependency
-
-    // Special handling for PDF.js worker files
+    // Add canvas module alias to fix PDF.js issue (for regular webpack builds)
+    config.resolve.alias.canvas = false;
+    
+    // Add special handling for PDF.js worker files
     config.module.rules.push({
       test: /pdf\.worker\.(min\.)?js/,
       type: 'asset/resource',

@@ -32,6 +32,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Disable service worker registration */}
+        <meta name="x-pdf-no-worker" content="true" />
+        
         {/* Move scripts to Next.js Script component with onLoad */}
         <Script 
           id="dynamic-import-polyfill"
@@ -43,7 +46,7 @@ export default function RootLayout({
           src="/fix-parser-selectors.js"
           strategy="beforeInteractive"
         />
-        {/* Don't include the worker script here - it will be loaded dynamically by the PDF components */}
+        {/* We no longer need the PDF worker script since we're managing the worker in pdf-setup.ts */}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

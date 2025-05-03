@@ -35,7 +35,7 @@ app.use((req, res, next) => {
  */
 async function fetchWorkerScript() {
   return new Promise((resolve, reject) => {
-    const workerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.js';
+    const workerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.269/pdf.worker.min.js';
     console.log(`Fetching fresh worker from: ${workerUrl}`);
     
     // Choose http or https module based on URL

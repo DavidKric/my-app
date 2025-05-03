@@ -264,7 +264,17 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   // Set scroll root on component mount
   useEffect(() => {
     if (containerRef.current) {
-      setScrollRoot(containerRef.current);
+      try {
+        // Make sure setScrollRoot exists before calling it
+        if (typeof setScrollRoot === 'function') {
+          console.log('[PDF] Setting scroll root element');
+          setScrollRoot(containerRef.current);
+        } else {
+          console.warn('[PDF] setScrollRoot is not available. ScrollContext may not be properly initialized.');
+        }
+      } catch (error) {
+        console.error('[PDF] Error setting scroll root:', error);
+      }
     }
   }, [containerRef, setScrollRoot]);
 
@@ -699,9 +709,21 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
   const handleDownload = useCallback(() => {
     console.log('Downloading PDF');
-    // Implement download
-    window.open(fileUrl, '_blank');
-  }, [fileUrl]);
+    // Implement download with null check
+    if (fileUrl) {
+      window.open(fileUrl, '_blank');
+    } else if (pdfData) {
+      // For binary data, create a Blob URL and open it
+      const blob = new Blob([pdfData], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'document.pdf';
+      link.click();
+      // Clean up the Blob URL after download
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    }
+  }, [fileUrl, pdfData]);
 
   const handlePrint = useCallback(() => {
     console.log('Printing PDF');

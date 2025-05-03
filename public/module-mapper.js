@@ -10,12 +10,12 @@
   // Define a mapping of problematic URLs to their replacements
   const MODULE_MAPPINGS = {
     // Map HTTP to HTTPS
-    'http://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.js': 
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.js',
+    'http://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.269/pdf.worker.min.js': 
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.269/pdf.worker.min.js',
       
     // Provide backup mappings for other URLs
-    'http://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/pdf.worker.min.js':
-      'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/pdf.worker.min.js'
+    'http://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.269/build/pdf.worker.min.js':
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.269/build/pdf.worker.min.js'
   };
   
   // Keep track of which modules we've tried to load

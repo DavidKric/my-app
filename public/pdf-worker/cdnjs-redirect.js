@@ -1,6 +1,6 @@
 // This script intercepts the specific CDN request that Allen AI is making
 (function() {
-  const cdnUrl = 'cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.js';
+  const cdnUrl = 'cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.269/pdf.worker.min.js';
   const localUrl = '/pdf-worker/pdf.worker.min.mjs';
   
   // Save original fetch
