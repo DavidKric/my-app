@@ -39,6 +39,15 @@ This document outlines the cleanup performed on the project to organize code, el
 - Removed duplicate PDF setup files at the root level
 - Maintained the centralized PDF setup in `my-app/lib/pdf-setup.ts`
 
+### 5. PDF Worker Configuration Refactoring
+- Improved the PDF.js worker configuration in `lib/pdf-setup.ts`:
+  - Added a cascading approach that tries multiple sources for the PDF worker
+  - Prioritizes a local worker file, then CDN, then falls back to an inline minimal worker
+- Added a script to automatically copy the worker file to the public directory:
+  - Created `scripts/copy-pdf-worker.js` to handle worker file copying
+  - Updated package.json to run this script before both dev and build commands
+- Created documentation in `PDF_WORKER_SETUP.md` explaining the approach
+
 ## Current Project Structure
 The main components of the application are now organized as follows:
 
@@ -51,6 +60,10 @@ The main components of the application are now organized as follows:
   - `ui/` - UI components
 - `lib/` - Utility libraries
   - `pdf-setup.ts` - PDF.js initialization
+- `scripts/` - Utility scripts
+  - `copy-pdf-worker.js` - Script to copy the PDF worker file to public directory
+- `public/` - Static files
+  - `pdf.worker.min.js` - PDF.js worker file (copied by script)
 
 ## Future Recommendations
 1. Consider further consolidating similar functionality

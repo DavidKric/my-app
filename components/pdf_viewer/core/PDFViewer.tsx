@@ -94,7 +94,8 @@ const PDFThumbnails = dynamic(() => import('./PDFThumbnails'), { ssr: false }) a
 const PDFOutline = dynamic(() => import('./PDFOutline'), { ssr: false }) as any;
 
 interface PDFViewerProps {
-  fileUrl: string;
+  fileUrl: string | null | undefined;
+  pdfData?: Uint8Array | null;
   currentPage?: number;
   onPageChange?: (page: number) => void;
   annotations?: Annotation[];
@@ -114,6 +115,7 @@ interface PDFViewerProps {
 
 const PDFViewer: React.FC<PDFViewerProps> = ({
   fileUrl: rawFileUrl,
+  pdfData,
   currentPage = 1,
   onPageChange,
   annotations = [],
@@ -132,6 +134,11 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   // Process file URL to ensure it works correctly
   const fileUrl = useMemo(() => {
     if (!rawFileUrl) {
+      // If we have PDF data, we don't need a URL
+      if (pdfData) {
+        console.log('Using provided binary PDF data instead of URL');
+        return null;
+      }
       console.error('No file URL provided to PDFViewer');
       return '';
     }
@@ -175,7 +182,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       console.log('Converting relative path to absolute:', `/${rawFileUrl}`);
       return `/${rawFileUrl}`;
     }
-  }, [rawFileUrl]);
+  }, [rawFileUrl, pdfData]);
 
   // Access context values using React's useContext hook
   const transformContext = useContext(TransformContext);
@@ -828,18 +835,21 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
                 {activeAnnotationTool && renderAnnotationModeIndicator()}
                 
                 {/* Main PDF component */}
-                <PDFComponents
-                  fileUrl={fileUrl}
-                  currentPage={page}
-                  scale={scale}
-                  rotation={rotation}
-                  onDocumentLoadSuccess={handleDocumentLoadSuccess}
-                  onPageChange={handlePageChange}
-                  activeAnnotationTool={activeAnnotationTool}
-                  annotations={annotations}
-                  onTextSelection={handleTextSelection}
-                  onAnnotationSelected={handleAnnotationSelected}
-                />
+                <div className="flex-1 w-full">
+                  <PDFComponents
+                    fileUrl={typeof fileUrl === 'string' ? fileUrl : undefined}
+                    pdfData={pdfData}
+                    currentPage={page}
+                    scale={scale}
+                    rotation={rotation}
+                    onDocumentLoadSuccess={handleDocumentLoadSuccess}
+                    onDocumentLoadError={handleDocumentLoadError}
+                    annotations={annotations}
+                    activeAnnotationTool={activeAnnotationTool}
+                    onTextSelection={handleTextSelection}
+                    onAnnotationSelected={handleAnnotationSelected}
+                  />
+                </div>
               </>
             )}
           </main>

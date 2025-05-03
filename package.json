@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "setup-pdfjs": "node scripts/setup-pdfjs.js",
-    "build": "npm run setup-pdfjs && next build",
+    "copy-pdf-worker": "node scripts/copy-pdf-worker.js",
+    "dev": "npm run copy-pdf-worker && next dev --turbopack",
+    "build": "npm run copy-pdf-worker && next build",
     "start": "next start",
     "lint": "next lint"
   },

@@ -33,6 +33,22 @@ async function fetchCasesData(): Promise<Case[]> {
                 type: 'file' as const,
                 fileType: 'pdf' as const,
                 parentId: 'folder-pleadings'
+              },
+              {
+                id: 'file-exhibit-a-url',
+                name: 'Exhibit_A_Web.pdf',
+                type: 'file' as const,
+                fileType: 'pdf' as const,
+                parentId: 'folder-pleadings',
+                url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+              },
+              {
+                id: 'file-exhibit-b-local',
+                name: 'Exhibit_B_Local.pdf',
+                type: 'file' as const,
+                fileType: 'pdf' as const,
+                parentId: 'folder-pleadings',
+                path: '/Users/newmacbookpro/Developmet workspace/annotator/my-app/public/sample-pdfs/contract.pdf'
               }
             ]
           },

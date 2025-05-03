@@ -7,7 +7,7 @@ import ContextSidebar from '@/components/context_panel/ContextSidebar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FloatingActionButtons } from '@/components/pdf/FloatingActionButtons';
+import { FloatingActionButtons } from '@/components/pdf_viewer/utils/FloatingActionButtons';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
