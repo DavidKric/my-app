@@ -46,7 +46,7 @@ This document outlines the cleanup performed on the project to organize code, el
 - Added a script to automatically copy the worker file to the public directory:
   - Created `scripts/copy-pdf-worker.js` to handle worker file copying
   - Updated package.json to run this script before both dev and build commands
-- Created documentation in `PDF_WORKER_SETUP.md` explaining the approach
+  - Created documentation in [PDF_WORKER_SETUP.md](PDF_WORKER_SETUP.md) explaining the approach
 
 ## Current Project Structure
 The main components of the application are now organized as follows:
