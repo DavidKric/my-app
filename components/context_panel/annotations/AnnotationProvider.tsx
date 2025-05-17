@@ -2,12 +2,15 @@
 
 import React, { createContext, useContext, useReducer, useMemo, useEffect } from 'react';
 import { Annotation } from './ProfessionalAnnotationSidebar';
+import { mockAnnotations } from './ProfessionalAnnotationSidebar';
+import type { AnnotationFilters } from '@/types/integrated_ai/integrated_ai';
 
 // State and action types
 interface AnnotationState {
   annotations: Annotation[];
   currentPage: number;
   selectedAnnotationId: string | null;
+  filters: AnnotationFilters;
 }
 
 type AnnotationAction =
@@ -17,6 +20,7 @@ type AnnotationAction =
   | { type: 'SET_ANNOTATIONS'; annotations: Annotation[] }
   | { type: 'SELECT_ANNOTATION'; id: string | null }
   | { type: 'SET_CURRENT_PAGE'; page: number }
+  | { type: 'SET_FILTERS'; filters: Partial<AnnotationFilters> }
   | { type: 'ADD_COMMENT'; annotationId: string; comment: any }
   | { type: 'UPDATE_COMMENT'; annotationId: string; commentId: string; text: string }
   | { type: 'DELETE_COMMENT'; annotationId: string; commentId: string };
@@ -73,6 +77,12 @@ const annotationsReducer = (state: AnnotationState, action: AnnotationAction): A
       return {
         ...state,
         currentPage: action.page
+      };
+
+    case 'SET_FILTERS':
+      return {
+        ...state,
+        filters: { ...state.filters, ...action.filters }
       };
     
     case 'ADD_COMMENT':
@@ -136,7 +146,13 @@ export function AnnotationProvider({ children, documentId }: AnnotationProviderP
   const [state, dispatch] = useReducer(annotationsReducer, {
     annotations: [],
     currentPage: 1,
-    selectedAnnotationId: null
+    selectedAnnotationId: null,
+    filters: {
+      categories: [],
+      creator: 'ALL',
+      query: '',
+      currentPageOnly: false
+    }
   });
 
   useEffect(() => {
