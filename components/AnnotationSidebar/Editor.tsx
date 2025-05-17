@@ -1,10 +1,10 @@
 'use client'
-import { useState, useContext } from 'react'
-import { Annotation, AnnotationContext } from '@/context/AnnotationContext'
+import { useState } from 'react'
+import { useAnnotations } from '@/components/context_panel/annotations/AnnotationProvider'
 
-export default function Editor({ draft }: { draft: Annotation }) {
+export default function Editor({ draft }: { draft: any }) {
   const [note, setNote] = useState(draft.note || '')
-  const { updateAnnotation } = useContext(AnnotationContext)
+  const { updateAnnotation } = useAnnotations()
   return (
     <div className="mt-1">
       <textarea

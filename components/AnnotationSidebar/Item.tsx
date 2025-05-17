@@ -1,27 +1,29 @@
 'use client'
-import { useContext } from 'react'
-import { AnnotationContext, Annotation } from '@/context/AnnotationContext'
+import { useAnnotations } from '@/components/context_panel/annotations/AnnotationProvider'
+import { Annotation } from '@/components/pdf_viewer/annotations/AnnotationOverlay'
 import Editor from './Editor'
 
-export default function Item({ ann, depth = 0 }: { ann: Annotation; depth?: number }) {
-  const { activeAnnotationId, setActiveAnnotationId, updateAnnotation } = useContext(AnnotationContext)
-  const active = activeAnnotationId === ann.id
+export default function Item({ ann, depth = 0 }: { ann: Annotation & { [key: string]: any }; depth?: number }) {
+  const { state, dispatch, updateAnnotation } = useAnnotations()
+  const active = state.selectedAnnotationId === ann.id
   return (
     <div
       className={`p-3 border-b ${active ? 'bg-yellow-100' : ''}`}
-      onMouseEnter={() => setActiveAnnotationId(ann.id)}
+      onMouseEnter={() => dispatch({ type: 'SELECT_ANNOTATION', id: ann.id })}
     >
-      {ann.selectedText && <p className="italic text-gray-600">“{ann.selectedText}”</p>}
-      {ann.editing ? (
-        <Editor draft={ann} />
+      {ann.textSnippet && <p className="italic text-gray-600">“{ann.textSnippet}”</p>}
+      {(ann as any).editing ? (
+        <Editor draft={ann as any} />
       ) : (
         <>
-          <p className="mt-1">{ann.note}</p>
-          <button className="text-xs" onClick={() => updateAnnotation(ann.id, { editing: true })}>Edit</button>
+          <p className="mt-1">{(ann as any).note || ann.comment}</p>
+          <button className="text-xs" onClick={() => updateAnnotation(ann.id, { ...(ann as any), editing: true } as any)}>
+            Edit
+          </button>
         </>
       )}
-      <div className="text-xs text-gray-500">{ann.tags?.join(', ')}</div>
-      {ann.replies && ann.replies.map(r => <Item key={r.id} ann={r} depth={depth + 1} />)}
+      <div className="text-xs text-gray-500">{(ann as any).tags?.join(', ')}</div>
+      {(ann as any).replies && (ann as any).replies.map((r: any) => <Item key={r.id} ann={r} depth={depth + 1} />)}
     </div>
   )
 }
