@@ -1,8 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useMemo, useEffect } from 'react';
 import { Annotation } from './ProfessionalAnnotationSidebar';
-import { mockAnnotations } from './ProfessionalAnnotationSidebar';
 
 // State and action types
 interface AnnotationState {
@@ -15,6 +14,7 @@ type AnnotationAction =
   | { type: 'ADD_ANNOTATION'; annotation: Annotation }
   | { type: 'UPDATE_ANNOTATION'; id: string; data: Partial<Annotation> }
   | { type: 'DELETE_ANNOTATION'; id: string }
+  | { type: 'SET_ANNOTATIONS'; annotations: Annotation[] }
   | { type: 'SELECT_ANNOTATION'; id: string | null }
   | { type: 'SET_CURRENT_PAGE'; page: number }
   | { type: 'ADD_COMMENT'; annotationId: string; comment: any }
@@ -24,6 +24,9 @@ type AnnotationAction =
 interface AnnotationsContextType {
   state: AnnotationState;
   dispatch: React.Dispatch<AnnotationAction>;
+  addAnnotation: (annotation: Annotation) => Promise<void>;
+  updateAnnotation: (id: string, data: Partial<Annotation>) => Promise<void>;
+  deleteAnnotation: (id: string) => Promise<void>;
 }
 
 // Create context
@@ -52,6 +55,12 @@ const annotationsReducer = (state: AnnotationState, action: AnnotationAction): A
       return {
         ...state,
         annotations: state.annotations.filter(annotation => annotation.id !== action.id)
+      };
+
+    case 'SET_ANNOTATIONS':
+      return {
+        ...state,
+        annotations: action.annotations
       };
     
     case 'SELECT_ANNOTATION':
@@ -118,14 +127,55 @@ const annotationsReducer = (state: AnnotationState, action: AnnotationAction): A
 };
 
 // Provider component
-export function AnnotationProvider({ children }: { children: React.ReactNode }) {
+interface AnnotationProviderProps {
+  children: React.ReactNode;
+  documentId?: string;
+}
+
+export function AnnotationProvider({ children, documentId }: AnnotationProviderProps) {
   const [state, dispatch] = useReducer(annotationsReducer, {
-    annotations: mockAnnotations, // Start with our mock data
+    annotations: [],
     currentPage: 1,
     selectedAnnotationId: null
   });
 
-  const contextValue = useMemo(() => ({ state, dispatch }), [state]);
+  useEffect(() => {
+    const query = documentId ? `?documentId=${encodeURIComponent(documentId)}` : '';
+    fetch(`/api/annotations${query}`)
+      .then(res => res.json())
+      .then(data => dispatch({ type: 'SET_ANNOTATIONS', annotations: data }))
+      .catch(() => {});
+  }, [documentId]);
+
+  const addAnnotation = async (annotation: Annotation) => {
+    const res = await fetch('/api/annotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(annotation)
+    });
+    const saved = await res.json();
+    dispatch({ type: 'ADD_ANNOTATION', annotation: saved });
+  };
+
+  const updateAnnotation = async (id: string, data: Partial<Annotation>) => {
+    const res = await fetch(`/api/annotations/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const updated = await res.json();
+    dispatch({ type: 'UPDATE_ANNOTATION', id, data: updated });
+  };
+
+  const deleteAnnotation = async (id: string) => {
+    await fetch(`/api/annotations/${id}`, { method: 'DELETE' });
+    dispatch({ type: 'DELETE_ANNOTATION', id });
+  };
+
+  const contextValue = useMemo(
+    () => ({ state, dispatch, addAnnotation, updateAnnotation, deleteAnnotation }),
+    [state]
+  );
 
   return (
     <AnnotationsContext.Provider value={contextValue}>

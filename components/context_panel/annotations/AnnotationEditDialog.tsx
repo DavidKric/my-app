@@ -12,16 +12,12 @@ interface Props {
 }
 
 export default function AnnotationEditDialog({ annotation, onClose }: Props) {
-  const { dispatch } = useAnnotations();
+  const { updateAnnotation } = useAnnotations();
   const [category, setCategory] = useState(annotation.category);
   const [comment, setComment] = useState(annotation.comment || '');
 
   const handleSave = () => {
-    dispatch({
-      type: 'UPDATE_ANNOTATION',
-      id: annotation.id,
-      updates: { category, comment },
-    });
+    updateAnnotation(annotation.id, { category, comment });
     onClose();
   };
 

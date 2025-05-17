@@ -18,7 +18,7 @@ interface SkimmingHighlightProps {
 }
 
 export default function SkimmingHighlightsPanel() {
-  const { state, dispatch } = useAnnotations();
+  const { state, addAnnotation, dispatch } = useAnnotations();
   const [showSettings, setShowSettings] = useState(false);
   
   // Get highlights suitable for skimming from our annotations
@@ -110,7 +110,7 @@ export default function SkimmingHighlightsPanel() {
     
     // Add the highlights to the state
     mockHighlights.forEach(highlight => {
-      dispatch({ type: 'ADD_ANNOTATION', annotation: highlight });
+      addAnnotation(highlight);
     });
   };
   
