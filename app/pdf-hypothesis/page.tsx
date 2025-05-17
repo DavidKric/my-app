@@ -6,7 +6,7 @@ import { AnnotationProvider } from '@/context/AnnotationContext'
 export default function Page() {
   const url = '/sample-pdfs/contract.pdf'
   return (
-    <AnnotationProvider documentId="demo-document">
+    <AnnotationProvider documentId={url}>
       <div className="flex h-screen">
         <div className="flex-1 relative">
           <PdfViewer pdfUrl={url} />

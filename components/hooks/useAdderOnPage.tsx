@@ -49,5 +49,6 @@ export function useAdderOnPage(pageIndex: number) {
     return () => document.removeEventListener('selectionchange', handler)
   }, [pageIndex])
 
+
   return { showAdder, rect, rects, text }
 }

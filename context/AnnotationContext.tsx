@@ -32,7 +32,6 @@ export const AnnotationContext = createContext<Ctx>({
   addAnnotation: () => {},
   updateAnnotation: () => {},
 })
-
 export function AnnotationProvider({ documentId, children }: { documentId: string; children: ReactNode }) {
   const [annotations, setAnnotations] = useState<Annotation[]>([])
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null)
