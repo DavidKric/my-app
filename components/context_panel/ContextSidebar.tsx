@@ -34,8 +34,8 @@ export default function ContextSidebar({ activeTab: externalActiveTab, onSetActi
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const { state } = useAnnotations();
-  const { annotations } = state;
-  const currentPage = state.currentPage || 1;
+  const { annotations = [] } = state || {};
+  const currentPage = state?.currentPage || 1;
 
   const handleAnnotationClick = (id: string) => {
     // Implementation would depend on your annotation structure

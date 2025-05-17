@@ -159,8 +159,18 @@ export function AnnotationProvider({ children, documentId }: AnnotationProviderP
     const query = documentId ? `?documentId=${encodeURIComponent(documentId)}` : '';
     fetch(`/api/annotations${query}`)
       .then(res => res.json())
-      .then(data => dispatch({ type: 'SET_ANNOTATIONS', annotations: data }))
-      .catch(() => {});
+      .then(data => {
+        // Transform the data if needed and validate it
+        const validAnnotations = Array.isArray(data) ? data.filter(ann => 
+          ann && typeof ann === 'object' && ann.id && ann.type
+        ) : [];
+        dispatch({ type: 'SET_ANNOTATIONS', annotations: validAnnotations });
+      })
+      .catch((err) => {
+        console.error('Error fetching annotations:', err);
+        // Initialize with empty array on error
+        dispatch({ type: 'SET_ANNOTATIONS', annotations: [] });
+      });
   }, [documentId]);
 
   const addAnnotation = async (annotation: Annotation) => {

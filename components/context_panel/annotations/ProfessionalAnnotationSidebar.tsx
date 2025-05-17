@@ -37,7 +37,7 @@ import {
 // Types
 export interface Annotation {
   id: string;
-  type: "clause" | "risk" | "definition" | "reference";
+  type: "clause" | "risk" | "definition" | "reference" | "highlight" | "note" | "comment" | "draw" | "key_insight" | "method" | "result" | "goal" | string;
   text: string;
   excerpt: string;
   page: number;
@@ -293,9 +293,13 @@ export function AnnotationSidebar({
       reference: []
     };
     
-    filteredAnnotations.forEach(annotation => {
-      grouped[annotation.type].push(annotation);
-    });
+    if (filteredAnnotations && Array.isArray(filteredAnnotations)) {
+      filteredAnnotations.forEach(annotation => {
+        if (annotation && annotation.type && grouped[annotation.type]) {
+          grouped[annotation.type].push(annotation);
+        }
+      });
+    }
     
     return grouped;
   }, [filteredAnnotations]);
