@@ -10,9 +10,13 @@ interface FolderNodeProps {
   folder: FolderNode;
   depth: number;
   onFileSelect: (file: FileNode) => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+  onCreateFile: (parentId: string) => void;
+  onCreateFolder: (parentId: string) => void;
 }
 
-export default function FolderNodeComponent({ folder, depth, onFileSelect }: FolderNodeProps) {
+export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder }: FolderNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [folderName, setFolderName] = useState(folder.name);
@@ -31,16 +35,22 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect }: Fol
   };
   const handleRenameSubmit = () => {
     setIsRenaming(false);
-    // TODO: call rename action (server) and update folder.name in state if persisted
+    if (folderName.trim() && folderName !== folder.name) {
+      onRename(folder.id, folderName.trim());
+    } else {
+      setFolderName(folder.name);
+    }
   };
   const handleNewFile = () => {
-    // TODO: create new file under this folder
+    onCreateFile(folder.id);
   };
   const handleNewFolder = () => {
-    // TODO: create new subfolder under this folder
+    onCreateFolder(folder.id);
   };
   const handleDelete = () => {
-    // TODO: delete this folder and its children
+    if (confirm(`Delete folder ${folder.name}?`)) {
+      onDelete(folder.id);
+    }
   };
 
   return (
@@ -74,7 +84,7 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect }: Fol
                 className="bg-muted text-muted-foreground px-1"
               />
             ) : (
-              <span onDoubleClick={toggleExpand}>{folder.name}</span>
+              <span onDoubleClick={toggleExpand}>{folderName}</span>
             )}
           </div>
         </ContextMenuTrigger>
@@ -90,10 +100,26 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect }: Fol
       {/* Render children if expanded */}
       {isExpanded && (
         <div role="group">
-          {folder.children.map(child => 
-            child.type === 'folder' ? 
-              <FolderNodeComponent key={child.id} folder={child} depth={depth+1} onFileSelect={onFileSelect} /> :
-              <FileNodeComponent key={child.id} file={child} depth={depth+1} onFileSelect={onFileSelect} />
+          {folder.children.map(child =>
+            child.type === 'folder' ?
+              <FolderNodeComponent
+                key={child.id}
+                folder={child}
+                depth={depth+1}
+                onFileSelect={onFileSelect}
+                onRename={onRename}
+                onDelete={onDelete}
+                onCreateFile={onCreateFile}
+                onCreateFolder={onCreateFolder}
+              /> :
+              <FileNodeComponent
+                key={child.id}
+                file={child}
+                depth={depth+1}
+                onFileSelect={onFileSelect}
+                onRename={onRename}
+                onDelete={onDelete}
+              />
           )}
         </div>
       )}

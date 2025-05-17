@@ -14,11 +14,11 @@ interface Props {
 }
 
 export default function AnnotationActionsMenu({ annotation }: Props) {
-  const { dispatch } = useAnnotations();
+  const { deleteAnnotation } = useAnnotations();
   const [openEdit, setOpenEdit] = React.useState(false);
 
   const handleDelete = () => {
-    dispatch({ type: 'DELETE_ANNOTATION', id: annotation.id });
+    deleteAnnotation(annotation.id);
   };
 
   return (

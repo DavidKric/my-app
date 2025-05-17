@@ -1,7 +1,7 @@
 'use client'
 import { FC } from 'react'
 import { PageWrapper, Overlay } from '@allenai/pdf-components'
-import AnnotationOverlay from './AnnotationOverlay'
+import { AnnotationOverlay } from './pdf_viewer/annotations/AnnotationOverlay'
 import AnnotationAdder from './AnnotationAdder'
 import { useAdderOnPage } from 'components/hooks/useAdderOnPage'
 
