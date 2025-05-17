@@ -1,5 +1,6 @@
 'use client'
-import { createContext, useState, ReactNode, useEffect } from 'react'
+import { createContext, useState, useEffect, ReactNode } from 'react'
+import { Rect } from '@/hooks/useAdderOnPage'
 
 export interface Annotation {
   id: string
@@ -18,61 +19,50 @@ interface Ctx {
   annotations: Annotation[]
   activeAnnotationId: string | null
   setActiveAnnotationId: (id: string | null) => void
-  addHighlight: (info: NewAnnotation) => Promise<Annotation | void>
-  addAnnotation: (info: NewAnnotation) => Promise<Annotation | void>
-  updateAnnotation: (id: string, data: Partial<Annotation>) => Promise<void>
+  addHighlight: (page: number, rects: Rect[], text: string) => void
+  addAnnotation: (page: number, rects: Rect[], text: string) => void
+  updateAnnotation: (id: string, data: Partial<Annotation>) => void
 }
 
 export const AnnotationContext = createContext<Ctx>({
   annotations: [],
   activeAnnotationId: null,
   setActiveAnnotationId: () => {},
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  addHighlight: async () => undefined,
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  addAnnotation: async () => undefined,
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  updateAnnotation: async () => {},
+  addHighlight: () => {},
+  addAnnotation: () => {},
+  updateAnnotation: () => {},
 })
-
-export interface NewAnnotation {
-  documentId: string
-  pageNumber: number
-  rects: any[]
-  selectedText: string
-  note?: string
-  tags?: string[]
-  parentId?: string | null
-}
-
 export function AnnotationProvider({ documentId, children }: { documentId: string; children: ReactNode }) {
   const [annotations, setAnnotations] = useState<Annotation[]>([])
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`/api/annotations?documentId=${encodeURIComponent(documentId)}`)
+    fetch(`/api/annotations?documentId=${documentId}`)
       .then(res => res.json())
       .then(setAnnotations)
       .catch(() => {})
   }, [documentId])
 
-  const addHighlight = async (info: NewAnnotation) => {
+  const addHighlight = async (page: number, rects: Rect[], text: string) => {
     const res = await fetch('/api/annotations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...info, note: info.note ?? '', tags: info.tags ?? [] }),
+      body: JSON.stringify({ documentId, pageNumber: page, rects, selectedText: text, note: '', tags: [] }),
     })
     const ann = await res.json()
-    setAnnotations(prev => [...prev, ann])
-    return ann
+    setAnnotations(a => [...a, ann])
   }
-  const addAnnotation = async (info: NewAnnotation) => {
-    const ann = await addHighlight({ ...info, note: info.note ?? '' })
-    if (ann) {
-      setAnnotations(prev =>
-        prev.map(a => (a.id === ann.id ? { ...a, editing: true } : a))
-      )
-    }
+
+  const addAnnotation = async (page: number, rects: Rect[], text: string) => {
+    const res = await fetch('/api/annotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentId, pageNumber: page, rects, selectedText: text, note: '', tags: [] }),
+    })
+    const ann = await res.json()
+    ann.editing = true
+    setAnnotations(a => [...a, ann])
+    setActiveAnnotationId(ann.id)
   }
 
   const updateAnnotation = async (id: string, data: Partial<Annotation>) => {
@@ -82,7 +72,7 @@ export function AnnotationProvider({ documentId, children }: { documentId: strin
       body: JSON.stringify(data),
     })
     const ann = await res.json()
-    setAnnotations(prev => prev.map(a => (a.id === id ? ann : a)))
+    setAnnotations(a => a.map(an => (an.id === id ? { ...ann } : an)))
   }
 
   return (

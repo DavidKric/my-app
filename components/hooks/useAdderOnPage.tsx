@@ -10,6 +10,8 @@ export interface Rect {
 
 export function useAdderOnPage(pageIndex: number) {
   const [rect, setRect] = useState<Rect | null>(null)
+  const [rects, setRects] = useState<Rect[]>([])
+  const [text, setText] = useState('')
   const [showAdder, setShowAdder] = useState(false)
 
   useEffect(() => {
@@ -20,29 +22,33 @@ export function useAdderOnPage(pageIndex: number) {
         return
       }
       const range = sel.getRangeAt(0)
-      const rects = range.getClientRects()
-      if (rects.length === 0) {
+      const clientRects = Array.from(range.getClientRects())
+      if (clientRects.length === 0) {
         setShowAdder(false)
         return
       }
-      const last = rects[rects.length - 1]
       const page = document.querySelectorAll('.pdf-page')[pageIndex] as HTMLElement
       if (!page || !page.contains(range.commonAncestorContainer)) {
         setShowAdder(false)
         return
       }
       const bounds = page.getBoundingClientRect()
-      setRect({
-        top: last.top - bounds.top,
-        left: last.left - bounds.left,
-        width: last.width,
-        height: last.height,
-      })
+      const relRects = clientRects.map(r => ({
+        top: r.top - bounds.top,
+        left: r.left - bounds.left,
+        width: r.width,
+        height: r.height,
+      }))
+      const last = relRects[relRects.length - 1]
+      setRect(last)
+      setRects(relRects)
+      setText(sel.toString())
       setShowAdder(true)
     }
     document.addEventListener('selectionchange', handler)
     return () => document.removeEventListener('selectionchange', handler)
   }, [pageIndex])
 
-  return { showAdder, rect }
+
+  return { showAdder, rect, rects, text }
 }

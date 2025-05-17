@@ -12,12 +12,8 @@ export default function Editor({ draft }: { draft: Annotation }) {
         onChange={e => setNote(e.target.value)}
         className="w-full border rounded p-1 text-sm"
       />
-      <button
-        className="mt-1 text-xs"
-        onClick={() => updateAnnotation(draft.id, { note, editing: false })}
-      >
-        Post
-      </button>
+      <button className="mt-1 text-xs" onClick={() => updateAnnotation(draft.id, { note, editing: false })}>Post</button>
+      <button className="mt-1 text-xs ml-2" onClick={() => updateAnnotation(draft.id, { editing: false })}>Cancel</button>
     </div>
   )
 }
