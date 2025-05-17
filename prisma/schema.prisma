@@ -1,10 +1,13 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 model Annotation {
@@ -15,7 +18,15 @@ model Annotation {
   selectedText String
   note        String
   tags        Json
-  parentId    String?  @default(null)
+  parentId    String?  // Optional field, no default needed
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// Define your models here
+// Example:
+// model User {
+//   id    Int     @id @default(autoincrement())
+//   email String  @unique
+//   name  String?
+// }
