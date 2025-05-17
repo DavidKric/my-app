@@ -1,9 +1,9 @@
 'use client'
-import { DocumentWrapper, DocumentContext } from '@allenai/pdf-components'
+import { ContextProvider, DocumentWrapper, DocumentContext } from '@allenai/pdf-components'
 import { useContext } from 'react'
 import PageView from './PageView'
 
-export default function PdfViewer({ pdfUrl }: { pdfUrl: string }) {
+function InnerViewer({ pdfUrl }: { pdfUrl: string }) {
   const { numPages } = useContext(DocumentContext)
   return (
     <DocumentWrapper file={pdfUrl}>
@@ -11,5 +11,13 @@ export default function PdfViewer({ pdfUrl }: { pdfUrl: string }) {
         <PageView key={i} pageIndex={i} />
       ))}
     </DocumentWrapper>
+  )
+}
+
+export default function PdfViewer({ pdfUrl }: { pdfUrl: string }) {
+  return (
+    <ContextProvider>
+      <InnerViewer pdfUrl={pdfUrl} />
+    </ContextProvider>
   )
 }
