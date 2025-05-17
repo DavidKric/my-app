@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Annotation {
+  id          String   @id @default(cuid())
+  documentId  String
+  pageNumber  Int
+  rects       Json
+  selectedText String
+  note        String
+  tags        Json
+  parentId    String?  @default(null)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
