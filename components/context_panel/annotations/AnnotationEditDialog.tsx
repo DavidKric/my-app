@@ -4,7 +4,7 @@ import { Dialog, DialogHeader, DialogFooter, DialogTitle, DialogContent, DialogT
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Annotation } from '@/components/pdf_viewer/AnnotationOverlay';
+import { Annotation } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 
 interface Props {
   annotation: Annotation;

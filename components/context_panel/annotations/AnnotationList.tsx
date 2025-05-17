@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAnnotations } from './AnnotationProvider';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Annotation, AnnotationType } from '@/components/pdf_viewer/AnnotationOverlay';
+import { Annotation, AnnotationType } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 import { AnnotationItem } from './AnnotationItem';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

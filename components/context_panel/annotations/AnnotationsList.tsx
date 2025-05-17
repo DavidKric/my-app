@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import AnnotationListItem from '@/components/context_panel/annotations/AnnotationListItem';
-import { Annotation } from '@/components/pdf_viewer/AnnotationOverlay';
+import { Annotation } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AnnotationListProps {

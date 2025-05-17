@@ -55,6 +55,9 @@ npm start
 # From the project root
 npm run dev
 ```
+This command runs a helper script that copies the `pdf.worker.min.js` file from
+`node_modules` into the `public` directory so the viewer can load the worker
+without CORS issues.
 
 3. Visit http://localhost:3000 to access the application
 

@@ -3,7 +3,7 @@ import { useAnnotations } from '@/components/context_panel/annotations/Annotatio
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import AnnotationActionsMenu from '@/components/context_panel/annotations/AnnotationActionsMenu';
-import { Annotation } from '@/components/pdf_viewer/AnnotationOverlay';
+import { Annotation } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 import { UserCircle2, Bot, MessageSquare, Calendar } from 'lucide-react';
 
 // Define category colors for visual distinction

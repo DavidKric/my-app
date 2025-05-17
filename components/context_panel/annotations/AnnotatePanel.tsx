@@ -5,7 +5,7 @@ import { useAnnotations } from '@/components/context_panel/annotations/Annotatio
 import { 
   Annotation, 
   AnnotationType 
-} from '@/components/pdf_viewer/AnnotationOverlay';
+} from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
