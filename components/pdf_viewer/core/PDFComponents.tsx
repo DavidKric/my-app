@@ -288,6 +288,32 @@ export default function PDFComponents({
     </div>
   ), [error, normalizedFileUrl]);
 
+  // Replace the useEffect with a properly typed version
+  useEffect(() => {
+    // Set up a fetch interceptor for service worker requests
+    const originalFetch = window.fetch;
+    window.fetch = function(input: RequestInfo | URL, init?: RequestInit) {
+      // Check if this is a service worker request we want to block
+      if (typeof input === 'string' && 
+         (input.includes('pdf-worker-sw.js') || 
+          input.includes('register-pdf-worker.js'))) {
+        console.log('[PDF] Intercepted and blocked service worker request:', input);
+        // Return an empty response to prevent 404 errors
+        return Promise.resolve(new Response(new Blob(['// Empty response']), {
+          status: 200,
+          headers: { 'Content-Type': 'application/javascript' }
+        }));
+      }
+      // Otherwise, pass through to the original fetch
+      return originalFetch(input, init);
+    };
+
+    return () => {
+      // Restore original fetch when component unmounts
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   // Show loading indicator while loading
   if (loading) {
     return <LoadingIndicator />;
