@@ -161,9 +161,11 @@ export function AnnotationProvider({ children, documentId }: AnnotationProviderP
       .then(res => res.json())
       .then(data => {
         // Transform the data if needed and validate it
-        const validAnnotations = Array.isArray(data) ? data.filter(ann => 
-          ann && typeof ann === 'object' && ann.id && ann.type
-        ) : [];
+        const validAnnotations = Array.isArray(data)
+          ? data
+              .filter(ann => ann && typeof ann === 'object' && ann.id && ann.type)
+              .map(ann => ({ ...ann, tags: ann.tags ?? [] }))
+          : [];
         dispatch({ type: 'SET_ANNOTATIONS', annotations: validAnnotations });
       })
       .catch((err) => {
@@ -174,20 +176,22 @@ export function AnnotationProvider({ children, documentId }: AnnotationProviderP
   }, [documentId]);
 
   const addAnnotation = async (annotation: Annotation) => {
+    const payload = { ...annotation, tags: annotation.tags ?? [] };
     const res = await fetch('/api/annotations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(annotation)
+      body: JSON.stringify(payload)
     });
     const saved = await res.json();
     dispatch({ type: 'ADD_ANNOTATION', annotation: saved });
   };
 
   const updateAnnotation = async (id: string, data: Partial<Annotation>) => {
+    const payload = { ...data };
     const res = await fetch(`/api/annotations/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(payload)
     });
     const updated = await res.json();
     dispatch({ type: 'UPDATE_ANNOTATION', id, data: updated });
