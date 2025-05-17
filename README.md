@@ -9,6 +9,7 @@ A modern PDF viewer and annotation tool for legal documents. This application ut
 - **Context Panels:** Sidebar for viewing annotations and file navigation
 - **Modern UI:** Clean, responsive interface with modern design patterns
 - **CORS-Free Worker:** Specialized PDF.js worker handling to avoid common CORS issues
+- **AI Copilot Chat:** Integrated chat assistant for document analysis
 
 ## Project Structure
 
@@ -85,6 +86,20 @@ This application leverages the professional @allenai/pdf-components library for 
 - Various context providers for document state management
 
 Custom UI components are built on top of these foundational components to create a cohesive and feature-rich application.
+
+## Context Sidebar and AI Copilot
+
+The right sidebar, defined in `ContextSidebar.tsx`, provides two major tools:
+
+- **Professional Annotation Sidebar** – lists annotations for the current PDF with search, filtering by type, and sorting options.
+- **AI Copilot Chat** – a chat interface that lets you discuss the document with an AI assistant. New messages cause the tab to highlight until opened.
+
+### Enabling
+
+1. Wrap workspace pages with `ClientAnnotationProvider` (see `app/workspace/layout.tsx`) to supply annotation state.
+2. Include `<ContextSidebar />` in your layout and control the active tab via its props if needed.
+
+Annotations are persisted through the Prisma-backed API under `app/api/annotations`.
 
 ## Browser Compatibility
 
