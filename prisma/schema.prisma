@@ -14,10 +14,10 @@ model Annotation {
   id          String   @id @default(cuid())
   documentId  String
   pageNumber  Int
-  rects       Json
+  rects       String   // Stored as JSON string
   selectedText String
   note        String
-  tags        Json
+  tags        String   // Stored as JSON string
   parentId    String?  // Optional field, no default needed
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
