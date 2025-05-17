@@ -1,7 +1,7 @@
 'use client'
 import PdfViewer from '@/components/PdfViewer'
-import AnnotationSidebar from '@/components/AnnotationSidebar'
-import { AnnotationProvider } from '@/context/AnnotationContext'
+import { AnnotationSidebar as ProfessionalAnnotationSidebar } from '@/components/context_panel/annotations/ProfessionalAnnotationSidebar'
+import { AnnotationProvider } from '@/components/context_panel/annotations/AnnotationProvider'
 
 export default function Page() {
   const url = '/sample-pdfs/contract.pdf'
@@ -11,7 +11,7 @@ export default function Page() {
         <div className="flex-1 relative">
           <PdfViewer pdfUrl={url} />
         </div>
-        <AnnotationSidebar />
+        <ProfessionalAnnotationSidebar />
       </div>
     </AnnotationProvider>
   )
