@@ -1,1 +1,0 @@
-/Users/newmacbookpro/Developmet workspace/annotator/my-app/node_modules/@allenai/pdf-components/dist/index.d.ts
