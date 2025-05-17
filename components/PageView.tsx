@@ -3,7 +3,7 @@ import { FC } from 'react'
 import { PageWrapper, Overlay } from '@allenai/pdf-components'
 import AnnotationOverlay from './AnnotationOverlay'
 import AnnotationAdder from './AnnotationAdder'
-import { useAdderOnPage } from '@/hooks/useAdderOnPage'
+import { useAdderOnPage } from 'components/hooks/useAdderOnPage'
 
 const PageView: FC<{ pageIndex: number }> = ({ pageIndex }) => {
   const { showAdder, rect, rects, text } = useAdderOnPage(pageIndex)
