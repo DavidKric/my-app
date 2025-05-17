@@ -1,4 +1,4 @@
-import { Annotation } from "@/components/pdf_viewer/AnnotationOverlay";
+import { Annotation } from "@/components/pdf_viewer/annotations/AnnotationOverlay";
 
 export interface ScrollPosition {
   pageNumber: number;

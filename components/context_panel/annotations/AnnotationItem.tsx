@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { MessageSquare, Highlighter, PenTool, Star, FileText, Lightbulb, BookMarked, ExternalLink } from 'lucide-react';
-import { Annotation, AnnotationType } from '@/components/pdf_viewer/AnnotationOverlay';
+import { Annotation, AnnotationType } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import scrollService from '@/lib/scroll-service';

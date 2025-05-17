@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAnnotations } from '@/components/context_panel/annotations/AnnotationProvider';
 import AnnotatePanel from '@/components/context_panel/annotations/AnnotatePanel';
-import { Annotation } from '@/components/pdf_viewer/AnnotationOverlay';
+import { Annotation } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 
 export default function AnnotationsTab() {
   const { dispatch, state } = useAnnotations();

@@ -7,7 +7,7 @@ import { DropdownMenu,
          DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import AnnotationEditDialog from '@/components/context_panel/annotations/AnnotationEditDialog';
-import { Annotation } from '@/components/pdf_viewer/AnnotationOverlay';
+import { Annotation } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 
 interface Props {
   annotation: Annotation;
