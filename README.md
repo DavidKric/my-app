@@ -109,6 +109,16 @@ The application is designed to work in modern browsers:
 - Safari (latest)
 - Edge (latest)
 
+## File Explorer Manual Testing
+
+To verify file and folder actions in the sidebar:
+
+1. Start the development server as described in **Development Setup**.
+2. In the workspace view, open the file explorer.
+3. Right-click a file to rename or delete it. Renaming should update the entry immediately and deleting should remove it from the tree.
+4. Right-click a folder to create a new file or subfolder, rename it, or delete it. Newly created items appear under the selected folder.
+5. Refresh the page to confirm that changes persist in the current session.
+
 ## License
 
 MIT License

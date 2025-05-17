@@ -9,9 +9,11 @@ interface FileNodeProps {
   file: FileNode;
   depth: number;
   onFileSelect: (file: FileNode) => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
 }
 
-export default function FileNodeComponent({ file, depth, onFileSelect }: FileNodeProps) {
+export default function FileNodeComponent({ file, depth, onFileSelect, onRename, onDelete }: FileNodeProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [fileName, setFileName] = useState(file.name);
 
@@ -20,10 +22,16 @@ export default function FileNodeComponent({ file, depth, onFileSelect }: FileNod
   const handleRename = () => setIsRenaming(true);
   const handleRenameSubmit = () => {
     setIsRenaming(false);
-    // TODO: persist the new name on the server and update state accordingly
+    if (fileName.trim() && fileName !== file.name) {
+      onRename(file.id, fileName.trim());
+    } else {
+      setFileName(file.name);
+    }
   };
   const handleDelete = () => {
-    // TODO: handle file deletion (with confirmation if needed)
+    if (confirm(`Delete ${file.name}?`)) {
+      onDelete(file.id);
+    }
   };
 
   return (
@@ -59,7 +67,7 @@ export default function FileNodeComponent({ file, depth, onFileSelect }: FileNod
             className="bg-muted text-muted-foreground px-1"
           />
         ) : (
-          <span>{file.name}</span>
+          <span>{fileName}</span>
         )}
       </div>
     </FileContextMenu>
