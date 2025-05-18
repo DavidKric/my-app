@@ -54,8 +54,8 @@ export default function SkimmingHighlightsPanel() {
     // Create sample highlights
     const createMockHighlight = (
       type: "clause" | "risk" | "definition" | "reference",
-      text: string, 
-      excerpt: string, 
+      text: string,
+      excerpt: string,
       page: number,
       extras?: SkimmingHighlightProps
     ): Annotation => {
@@ -67,7 +67,8 @@ export default function SkimmingHighlightsPanel() {
         page,
         createdAt: new Date(),
         author: { name: "AI Assistant" },
-        comments: []
+        comments: [],
+        tags: []
       };
     };
     
