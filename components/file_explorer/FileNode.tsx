@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { FileNode } from '@/types/file_explorer/file-structure';
-import { FileTextIcon } from 'lucide-react';
-import FileContextMenu from './FileContextMenu';
+import React, { useState } from "react";
+import { FileNode } from "@/types/file_explorer/file-structure";
+import { FileTextIcon } from "lucide-react";
+import FileContextMenu from "./FileContextMenu";
+import { DRAG_NODE_MIME } from "./constants";
 
 interface FileNodeProps {
   file: FileNode;
@@ -11,9 +12,18 @@ interface FileNodeProps {
   onFileSelect: (file: FileNode) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  /** Triggered when the user selects the "Move to…" action */
+  onMove: (id: string) => void;
 }
 
-export default function FileNodeComponent({ file, depth, onFileSelect, onRename, onDelete }: FileNodeProps) {
+export default function FileNodeComponent({
+  file,
+  depth,
+  onFileSelect,
+  onRename,
+  onDelete,
+  onMove,
+}: FileNodeProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [fileName, setFileName] = useState(file.name);
 
@@ -35,25 +45,24 @@ export default function FileNodeComponent({ file, depth, onFileSelect, onRename,
   };
 
   return (
-    <FileContextMenu onRename={handleRename} onDelete={handleDelete}>
+    <FileContextMenu
+      onRename={handleRename}
+      onDelete={handleDelete}
+      onMove={() => onMove(file.id)}
+    >
       <div
         className="flex items-center cursor-pointer hover:bg-accent hover:text-accent-foreground pr-2"
         style={indentStyle}
         onClick={() => onFileSelect(file)}
         draggable={true}
         onDragStart={(e) => {
-          // TODO: Implement drag start logic (e.g., store file id in dataTransfer)
+          e.dataTransfer.setData(DRAG_NODE_MIME, file.id);
+          e.dataTransfer.effectAllowed = "move";
         }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          // Optionally, add visual feedback for drop target
-        }}
-        onDrop={(e) => {
-          // TODO: Handle drop event to support reordering/moving the file
-        }}
+        onDragOver={(e) => e.preventDefault()}
       >
         {/* Spacer for alignment (files don’t have an expand arrow) */}
-        <span className="mr-1" style={{ width: '1rem' }}></span>
+        <span className="mr-1" style={{ width: "1rem" }}></span>
         <FileTextIcon size={16} className="mr-1" />
         {isRenaming ? (
           <input
@@ -61,7 +70,7 @@ export default function FileNodeComponent({ file, depth, onFileSelect, onRename,
             onChange={(e) => setFileName(e.target.value)}
             onBlur={handleRenameSubmit}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRenameSubmit();
+              if (e.key === "Enter") handleRenameSubmit();
             }}
             autoFocus
             className="bg-muted text-muted-foreground px-1"
