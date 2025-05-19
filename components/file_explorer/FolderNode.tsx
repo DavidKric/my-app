@@ -159,6 +159,7 @@ export default function FolderNodeComponent({
                 onRename={onRename}
                 onDelete={onDelete}
                 activeFileId={activeFileId}
+                onMoveNode={onMoveNode}
                 onMove={onMove}
               />
           )}

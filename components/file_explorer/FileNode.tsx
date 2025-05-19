@@ -13,14 +13,22 @@ interface FileNodeProps {
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
   activeFileId: string;
-}
-
-export default function FileNodeComponent({ file, depth, onFileSelect, onRename, onDelete, activeFileId }: FileNodeProps) {
+  /** Handle dropping a node onto this file's parent folder */
+  onMoveNode: (nodeId: string, targetFolderId: string) => void;
   /** Triggered when the user selects the "Move to…" action */
   onMove: (id: string) => void;
 }
 
-export default function FileNodeComponent({ file, depth, onFileSelect, onRename, onDelete, onMove }: FileNodeProps) {
+export default function FileNodeComponent({
+  file,
+  depth,
+  onFileSelect,
+  onRename,
+  onDelete,
+  activeFileId,
+  onMoveNode,
+  onMove,
+}: FileNodeProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [fileName, setFileName] = useState(file.name);
 
@@ -41,21 +49,34 @@ export default function FileNodeComponent({ file, depth, onFileSelect, onRename,
     }
   };
 
+  const [isDragOver, setIsDragOver] = useState(false);
+
   return (
     <FileContextMenu onRename={handleRename} onDelete={handleDelete} onMove={() => onMove(file.id)}>
       <div
         className={clsx(
           'flex items-center cursor-pointer hover:bg-accent hover:text-accent-foreground pr-2',
-          activeFileId === file.id && 'bg-primary/10 text-primary'
+          activeFileId === file.id && 'bg-primary/10 text-primary',
+          { 'bg-accent/50': isDragOver }
         )}
         style={indentStyle}
         onClick={() => onFileSelect(file)}
-        draggable={true}
+        draggable
         onDragStart={(e) => {
           e.dataTransfer.setData('application/x-tree-node-id', file.id);
           e.dataTransfer.effectAllowed = 'move';
         }}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragOver(false);
+          const nodeId = e.dataTransfer.getData('application/x-tree-node-id');
+          if (nodeId) onMoveNode(nodeId, file.parentId);
+        }}
       >
         {/* Spacer for alignment (files don’t have an expand arrow) */}
         <span className="mr-1" style={{ width: '1rem' }}></span>
