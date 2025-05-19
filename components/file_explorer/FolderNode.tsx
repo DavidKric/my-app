@@ -14,9 +14,10 @@ interface FolderNodeProps {
   onDelete: (id: string) => void;
   onCreateFile: (parentId: string) => void;
   onCreateFolder: (parentId: string) => void;
+  activeFileId: string;
 }
 
-export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder }: FolderNodeProps) {
+export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder, activeFileId }: FolderNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [folderName, setFolderName] = useState(folder.name);
@@ -111,6 +112,7 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 onDelete={onDelete}
                 onCreateFile={onCreateFile}
                 onCreateFolder={onCreateFolder}
+                activeFileId={activeFileId}
               /> :
               <FileNodeComponent
                 key={child.id}
@@ -119,6 +121,7 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 onFileSelect={onFileSelect}
                 onRename={onRename}
                 onDelete={onDelete}
+                activeFileId={activeFileId}
               />
           )}
         </div>
