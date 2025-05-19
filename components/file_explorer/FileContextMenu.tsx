@@ -11,12 +11,18 @@ import {
 interface FileContextMenuProps {
   onRename: () => void;
   onDelete: () => void;
+  onMove: () => void;
+  onCopyPath: () => void;
+  onRevealInFinder: () => void;
   children: React.ReactNode;
 }
 
 export default function FileContextMenu({
   onRename,
   onDelete,
+  onMove,
+  onCopyPath,
+  onRevealInFinder,
   children,
 }: FileContextMenuProps) {
   return (
@@ -27,7 +33,9 @@ export default function FileContextMenu({
       <ContextMenuContent>
         <ContextMenuItem onSelect={onRename}>Rename</ContextMenuItem>
         <ContextMenuItem onSelect={onDelete}>Delete</ContextMenuItem>
-        {/* Additional file-specific actions (e.g., "Download", "Move") can be added here */}
+        <ContextMenuItem onSelect={onMove}>Move</ContextMenuItem>
+        <ContextMenuItem onSelect={onCopyPath}>Copy Path</ContextMenuItem>
+        <ContextMenuItem onSelect={onRevealInFinder}>Reveal in Finder</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );

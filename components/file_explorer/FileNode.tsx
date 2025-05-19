@@ -11,15 +11,21 @@ interface FileNodeProps {
   onFileSelect: (file: FileNode) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  onMove: (id: string) => void;
+  onCopyPath: (id: string) => void;
+  onRevealInFinder: (id: string) => void;
 }
 
-export default function FileNodeComponent({ file, depth, onFileSelect, onRename, onDelete }: FileNodeProps) {
+export default function FileNodeComponent({ file, depth, onFileSelect, onRename, onDelete, onMove, onCopyPath, onRevealInFinder }: FileNodeProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [fileName, setFileName] = useState(file.name);
 
   const indentStyle = { paddingLeft: `${depth * 1.25}rem` };
 
   const handleRename = () => setIsRenaming(true);
+  const handleMove = () => onMove(file.id);
+  const handleCopyPath = () => onCopyPath(file.id);
+  const handleReveal = () => onRevealInFinder(file.id);
   const handleRenameSubmit = () => {
     setIsRenaming(false);
     if (fileName.trim() && fileName !== file.name) {
@@ -35,7 +41,13 @@ export default function FileNodeComponent({ file, depth, onFileSelect, onRename,
   };
 
   return (
-    <FileContextMenu onRename={handleRename} onDelete={handleDelete}>
+    <FileContextMenu
+      onRename={handleRename}
+      onDelete={handleDelete}
+      onMove={handleMove}
+      onCopyPath={handleCopyPath}
+      onRevealInFinder={handleReveal}
+    >
       <div
         className="flex items-center cursor-pointer hover:bg-accent hover:text-accent-foreground pr-2"
         style={indentStyle}

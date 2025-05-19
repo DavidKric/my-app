@@ -119,6 +119,108 @@ export default function FileTree({ root, searchQuery = '', onFileSelect }: FileT
     setTreeData(prev => add(prev));
   };
 
+  const findNode = (
+    node: FolderNode,
+    id: string,
+    path: string[]
+  ): { node: FolderNode | FileNode; path: string[] } | null => {
+    if (node.id === id) {
+      return { node, path };
+    }
+    for (const child of node.children) {
+      if (child.id === id) {
+        return { node: child, path: [...path, child.name] };
+      }
+      if (child.type === 'folder') {
+        const res = findNode(child, id, [...path, child.name]);
+        if (res) return res;
+      }
+    }
+    return null;
+  };
+
+  const getFullPath = (id: string): string | null => {
+    const res = findNode(treeData, id, [treeData.name]);
+    if (!res) return null;
+    const { node, path } = res;
+    if (node.type === 'file' && node.path) {
+      return node.path;
+    }
+    return path.join('/');
+  };
+
+  const copyPath = (id: string) => {
+    const p = getFullPath(id);
+    if (p) {
+      navigator.clipboard.writeText(p);
+    }
+  };
+
+  const revealInFinder = async (id: string) => {
+    const p = getFullPath(id);
+    if (!p) return;
+    await fetch('/api/open-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: p }),
+    });
+  };
+
+  const moveNode = (
+    id: string,
+    targetFolderId: string
+  ) => {
+    const remove = (
+      node: FolderNode
+    ): [FolderNode, FolderNode | FileNode | null] => {
+      let found: FolderNode | FileNode | null = null;
+      const children = node.children.flatMap((child) => {
+        if (child.id === id) {
+          found = child;
+          return [];
+        }
+        if (child.type === 'folder') {
+          const [updated, f] = remove(child);
+          if (f) found = f;
+          return [updated];
+        }
+        return [child];
+      });
+      return [{ ...node, children }, found];
+    };
+
+    const add = (
+      node: FolderNode,
+      item: FolderNode | FileNode
+    ): FolderNode => {
+      if (node.id === targetFolderId) {
+        return { ...node, children: [...node.children, item] };
+      }
+      return {
+        ...node,
+        children: node.children.map((child) =>
+          child.type === 'folder' ? add(child, item) : child
+        ),
+      };
+    };
+
+    setTreeData((prev) => {
+      const [without, item] = remove(prev);
+      if (!item) return prev;
+      return add(without, item);
+    });
+  };
+
+  const moveFile = (id: string) => {
+    const target = prompt('Target folder id:');
+    if (target) moveNode(id, target);
+  };
+
+  const moveFolder = (id: string) => {
+    const target = prompt('Target folder id:');
+    if (target) moveNode(id, target);
+  };
+
   // Optionally filter the tree if searchQuery is provided
   const filteredRoot = useMemo(() => {
     if (!searchQuery) return treeData;
@@ -155,6 +257,9 @@ export default function FileTree({ root, searchQuery = '', onFileSelect }: FileT
             onDelete={deleteFolder}
             onCreateFile={createFile}
             onCreateFolder={createFolder}
+            onMove={moveFolder}
+            onCopyPath={copyPath}
+            onRevealInFinder={revealInFinder}
           /> :
           <FileNodeComponent
             key={child.id}
@@ -163,6 +268,9 @@ export default function FileTree({ root, searchQuery = '', onFileSelect }: FileT
             onFileSelect={handleFileSelect}
             onRename={renameFile}
             onDelete={deleteFile}
+            onMove={moveFile}
+            onCopyPath={copyPath}
+            onRevealInFinder={revealInFinder}
           />
       )}
     </div>

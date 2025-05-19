@@ -14,9 +14,12 @@ interface FolderNodeProps {
   onDelete: (id: string) => void;
   onCreateFile: (parentId: string) => void;
   onCreateFolder: (parentId: string) => void;
+  onMove: (id: string) => void;
+  onCopyPath: (id: string) => void;
+  onRevealInFinder: (id: string) => void;
 }
 
-export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder }: FolderNodeProps) {
+export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder, onMove, onCopyPath, onRevealInFinder }: FolderNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [folderName, setFolderName] = useState(folder.name);
@@ -52,6 +55,9 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
       onDelete(folder.id);
     }
   };
+  const handleMove = () => onMove(folder.id);
+  const handleCopyPath = () => onCopyPath(folder.id);
+  const handleReveal = () => onRevealInFinder(folder.id);
 
   return (
     <div>
@@ -94,6 +100,9 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
           <ContextMenuItem onSelect={handleNewFolder}>New Folder</ContextMenuItem>
           <ContextMenuItem onSelect={handleRename}>Rename</ContextMenuItem>
           <ContextMenuItem onSelect={handleDelete}>Delete</ContextMenuItem>
+          <ContextMenuItem onSelect={handleMove}>Move</ContextMenuItem>
+          <ContextMenuItem onSelect={handleCopyPath}>Copy Path</ContextMenuItem>
+          <ContextMenuItem onSelect={handleReveal}>Reveal in Finder</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
 
@@ -111,6 +120,9 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 onDelete={onDelete}
                 onCreateFile={onCreateFile}
                 onCreateFolder={onCreateFolder}
+                onMove={onMove}
+                onCopyPath={onCopyPath}
+                onRevealInFinder={onRevealInFinder}
               /> :
               <FileNodeComponent
                 key={child.id}
@@ -119,6 +131,9 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 onFileSelect={onFileSelect}
                 onRename={onRename}
                 onDelete={onDelete}
+                onMove={onMove}
+                onCopyPath={onCopyPath}
+                onRevealInFinder={onRevealInFinder}
               />
           )}
         </div>
