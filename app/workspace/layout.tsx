@@ -48,7 +48,7 @@ async function fetchCasesData(): Promise<Case[]> {
                 type: 'file' as const,
                 fileType: 'pdf' as const,
                 parentId: 'folder-pleadings',
-                path: '/Users/newmacbookpro/Developmet workspace/annotator/my-app/public/sample-pdfs/contract.pdf'
+                path: '/sample-pdfs/contract.pdf'
               }
             ]
           },
