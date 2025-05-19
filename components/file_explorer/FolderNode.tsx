@@ -9,6 +9,8 @@ import { FolderIcon, ChevronRightIcon, ChevronDownIcon } from 'lucide-react'; //
 interface FolderNodeProps {
   folder: FolderNode;
   depth: number;
+  expandedFolders: Record<string, boolean>;
+  onToggleExpand: (id: string) => void;
   onFileSelect: (file: FileNode) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
@@ -16,8 +18,18 @@ interface FolderNodeProps {
   onCreateFolder: (parentId: string) => void;
 }
 
-export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder }: FolderNodeProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export default function FolderNodeComponent({
+  folder,
+  depth,
+  expandedFolders,
+  onToggleExpand,
+  onFileSelect,
+  onRename,
+  onDelete,
+  onCreateFile,
+  onCreateFolder,
+}: FolderNodeProps) {
+  const isExpanded = expandedFolders[folder.id] || false;
   const [isRenaming, setIsRenaming] = useState(false);
   const [folderName, setFolderName] = useState(folder.name);
 
@@ -25,8 +37,7 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
   const indentStyle = { paddingLeft: `${depth * 1.25}rem` }; // e.g., 1.25rem per level indent
 
   const toggleExpand = () => {
-    setIsExpanded(prev => !prev);
-    // (In a more global approach, we would notify parent to update expanded state)
+    onToggleExpand(folder.id);
   };
 
   const handleRename = () => {
@@ -106,6 +117,8 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 key={child.id}
                 folder={child}
                 depth={depth+1}
+                expandedFolders={expandedFolders}
+                onToggleExpand={onToggleExpand}
                 onFileSelect={onFileSelect}
                 onRename={onRename}
                 onDelete={onDelete}
