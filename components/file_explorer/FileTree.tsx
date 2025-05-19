@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FolderNode, FileNode } from '@/types/file_explorer/file-structure';
 import FolderNodeComponent from './FolderNode';
 import FileNodeComponent from './FileNode';
+import { useRecentFiles } from '@/lib/useRecentFiles';
 
 interface FileTreeProps {
   root: FolderNode;            // the root folder of the project
@@ -15,8 +16,10 @@ interface FileTreeProps {
 export default function FileTree({ root, searchQuery = '', onFileSelect }: FileTreeProps) {
   const router = useRouter();
   const [treeData, setTreeData] = useState(root);
-  
+  const { addFile } = useRecentFiles();
+
   const handleFileSelect = (file: FileNode) => {
+    addFile(file);
     if (file.fileType === 'pdf') {
       router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}`);
     } else {
