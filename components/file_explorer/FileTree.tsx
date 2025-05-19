@@ -122,6 +122,45 @@ export default function FileTree({ root, searchQuery = '', onFileSelect }: FileT
     setTreeData(prev => add(prev));
   };
 
+  const moveNode = (nodeId: string, targetFolderId: string) => {
+    if (nodeId === targetFolderId) return;
+    setTreeData(prev => {
+      let moving: FolderNode | FileNode | null = null;
+
+      const remove = (node: FolderNode): FolderNode => ({
+        ...node,
+        children: node.children.flatMap(child => {
+          if (child.id === nodeId) {
+            moving = child;
+            return [];
+          }
+          return child.type === 'folder' ? [remove(child)] : [child];
+        }),
+      });
+
+      const add = (node: FolderNode): FolderNode => {
+        if (node.id === targetFolderId && moving) {
+          return { ...node, children: [...node.children, { ...moving!, parentId: node.id }] };
+        }
+        return {
+          ...node,
+          children: node.children.map(child =>
+            child.type === 'folder' ? add(child) : child
+          ),
+        };
+      };
+
+      const without = remove(prev);
+      if (!moving) return prev;
+      return add(without);
+    });
+  };
+
+  const promptMove = (id: string) => {
+    const target = prompt('Move to folder ID:');
+    if (target) moveNode(id, target);
+  };
+
   // Optionally filter the tree if searchQuery is provided
   const filteredRoot = useMemo(() => {
     if (!searchQuery) return treeData;
@@ -158,6 +197,8 @@ export default function FileTree({ root, searchQuery = '', onFileSelect }: FileT
             onDelete={deleteFolder}
             onCreateFile={createFile}
             onCreateFolder={createFolder}
+            onMoveNode={moveNode}
+            onMove={promptMove}
           /> :
           <FileNodeComponent
             key={child.id}
@@ -166,6 +207,7 @@ export default function FileTree({ root, searchQuery = '', onFileSelect }: FileT
             onFileSelect={handleFileSelect}
             onRename={renameFile}
             onDelete={deleteFile}
+            onMove={promptMove}
           />
       )}
     </div>
