@@ -25,6 +25,7 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
   const [pinned, setPinned] = useState(true); // Default to pinned for better usability
   const [hovered, setHovered] = useState(false);
   const [activePanel, setActivePanel] = useState<Panel>('explorer');
+  const [activeFileId, setActiveFileId] = useState('');
 
   const activeProject = cases.find((p) => p.id === activeProjectId);
 
@@ -49,8 +50,9 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
           <FileTree
             root={activeProject.root}
             searchQuery={searchQuery}
+            activeFileId={activeFileId}
             onFileSelect={(file) => {
-              // Handle file open (e.g. navigation or state update)
+              setActiveFileId(file.id);
             }}
           />
         )}
