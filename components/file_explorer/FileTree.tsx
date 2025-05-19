@@ -1,11 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FolderNode, FileNode } from '@/types/file_explorer/file-structure';
 import FolderNodeComponent from './FolderNode';
 import FileNodeComponent from './FileNode';
+import { loadFileTreeState, saveFileTreeState } from '@/lib/fileTreeStorage';
 import { useRecentFiles } from '@/lib/useRecentFiles';
+
 
 interface FileTreeProps {
   root: FolderNode;            // the root folder of the project
@@ -17,14 +19,34 @@ interface FileTreeProps {
 export default function FileTree({ root, searchQuery = '', activeFileId, onFileSelect }: FileTreeProps) {
   const router = useRouter();
   const [treeData, setTreeData] = useState(root);
-  const { addFile } = useRecentFiles();
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  const [hydrated, setHydrated] = useState(false);
 
+  useEffect(() => {
+    const stored = loadFileTreeState();
+    if (stored) {
+      setTreeData(stored.treeData);
+      setExpandedFolders(stored.expanded || {});
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) {
+      saveFileTreeState({ treeData, expanded: expandedFolders });
+    }
+  }, [treeData, expandedFolders, hydrated]);
+  const { addFile } = useRecentFiles();
   const handleFileSelect = (file: FileNode) => {
     onFileSelect(file);
     addFile(file);
     if (file.fileType === 'pdf') {
       router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}`);
     }
+  };
+
+  const toggleFolderExpand = (id: string) => {
+    setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const renameFile = (id: string, name: string) => {
@@ -76,6 +98,11 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
         .map(child => (child.type === 'folder' ? remove(child) : child)),
     });
     setTreeData(prev => remove(prev));
+    setExpandedFolders(prev => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
   };
 
   const createFile = (parentId: string) => {
@@ -183,6 +210,8 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
     return filterNode(treeData) as FolderNode || { ...treeData, children: [] };
   }, [treeData, searchQuery]);
 
+  if (!hydrated) return null;
+
   return (
     <div role="tree" aria-label="File Explorer" className="p-2">
       {/* Iterate over top-level children of root (skip the root's own name) */}
@@ -192,6 +221,8 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
             key={child.id}
             folder={child}
             depth={0}
+            expandedFolders={expandedFolders}
+            onToggleExpand={toggleFolderExpand}
             onFileSelect={handleFileSelect}
             onRename={renameFolder}
             onDelete={deleteFolder}
