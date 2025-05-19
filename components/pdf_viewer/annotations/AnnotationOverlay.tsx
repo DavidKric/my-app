@@ -244,7 +244,6 @@ export function AnnotationOverlay({
   const { state, dispatch } = useAnnotations();
   const { selectedAnnotation, filters } = state;
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -298,15 +297,14 @@ export function AnnotationOverlay({
   };
 
   useEffect(() => {
-    // Find the page container
-    if (!canvasRef.current) return;
-    
-    // Look for the page container (this should target the specific page container)
-    const pageElement = canvasRef.current.closest('.react-pdf__Page');
+    // Find the page container using the nearest data attribute from PageWrapper
+    if (!overlayRef.current) return;
+
+    const pageElement = overlayRef.current.closest('[data-pdf-page]');
     if (pageElement) {
       pageContainerRef.current = pageElement as HTMLDivElement;
     } else {
-      console.warn('Could not find .react-pdf__Page container');
+      console.warn('Could not locate page container');
     }
   }, [currentPage]);
   
