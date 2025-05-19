@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FolderNode, FileNode } from '@/types/file_explorer/file-structure';
 import FolderNodeComponent from './FolderNode';
 import FileNodeComponent from './FileNode';
+import { useRecentFiles } from '@/lib/useRecentFiles';
 
 interface FileTreeProps {
   root: FolderNode;            // the root folder of the project
@@ -16,9 +17,11 @@ interface FileTreeProps {
 export default function FileTree({ root, searchQuery = '', activeFileId, onFileSelect }: FileTreeProps) {
   const router = useRouter();
   const [treeData, setTreeData] = useState(root);
-  
+  const { addFile } = useRecentFiles();
+
   const handleFileSelect = (file: FileNode) => {
     onFileSelect(file);
+    addFile(file);
     if (file.fileType === 'pdf') {
       router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}`);
     }
@@ -119,6 +122,45 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
     setTreeData(prev => add(prev));
   };
 
+  const moveNode = (nodeId: string, targetFolderId: string) => {
+    if (nodeId === targetFolderId) return;
+    setTreeData(prev => {
+      let moving: FolderNode | FileNode | null = null;
+
+      const remove = (node: FolderNode): FolderNode => ({
+        ...node,
+        children: node.children.flatMap(child => {
+          if (child.id === nodeId) {
+            moving = child;
+            return [];
+          }
+          return child.type === 'folder' ? [remove(child)] : [child];
+        }),
+      });
+
+      const add = (node: FolderNode): FolderNode => {
+        if (node.id === targetFolderId && moving) {
+          return { ...node, children: [...node.children, { ...moving!, parentId: node.id }] };
+        }
+        return {
+          ...node,
+          children: node.children.map(child =>
+            child.type === 'folder' ? add(child) : child
+          ),
+        };
+      };
+
+      const without = remove(prev);
+      if (!moving) return prev;
+      return add(without);
+    });
+  };
+
+  const promptMove = (id: string) => {
+    const target = prompt('Move to folder ID:');
+    if (target) moveNode(id, target);
+  };
+
   // Optionally filter the tree if searchQuery is provided
   const filteredRoot = useMemo(() => {
     if (!searchQuery) return treeData;
@@ -156,6 +198,8 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
             onCreateFile={createFile}
             onCreateFolder={createFolder}
             activeFileId={activeFileId}
+            onMoveNode={moveNode}
+            onMove={promptMove}
           /> :
           <FileNodeComponent
             key={child.id}
@@ -165,6 +209,7 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
             onRename={renameFile}
             onDelete={deleteFile}
             activeFileId={activeFileId}
+            onMove={promptMove}
           />
       )}
     </div>

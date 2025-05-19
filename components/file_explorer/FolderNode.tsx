@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import clsx from 'clsx';
 import { FolderNode, FileNode } from '@/types/file_explorer/file-structure';
 import FileNodeComponent from './FileNode';
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from '@/components/ui/context-menu';
@@ -18,9 +19,17 @@ interface FolderNodeProps {
 }
 
 export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder, activeFileId }: FolderNodeProps) {
+  /** Handle dropping a node onto this folder */
+  onMoveNode: (nodeId: string, targetFolderId: string) => void;
+  /** Triggered when the user chooses to move this folder via the context menu */
+  onMove: (id: string) => void;
+}
+
+export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder, onMoveNode, onMove }: FolderNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [folderName, setFolderName] = useState(folder.name);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Indentation for nested depth
   const indentStyle = { paddingLeft: `${depth * 1.25}rem` }; // e.g., 1.25rem per level indent
@@ -59,10 +68,29 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
       <ContextMenu>
         <ContextMenuTrigger asChild>
           {/* Folder row */}
-          <div 
-            className="flex items-center cursor-pointer hover:bg-accent hover:text-accent-foreground pr-2" 
+          <div
+            className={clsx(
+              'flex items-center cursor-pointer hover:bg-accent hover:text-accent-foreground pr-2',
+              { 'bg-accent/50': isDragOver }
+            )}
             style={indentStyle}
             onClick={toggleExpand}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/x-tree-node-id', folder.id);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+              const nodeId = e.dataTransfer.getData('application/x-tree-node-id');
+              if (nodeId) onMoveNode(nodeId, folder.id);
+            }}
           >
             {/* Arrow icon for expand/collapse */}
             <button 
@@ -95,6 +123,7 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
           <ContextMenuItem onSelect={handleNewFolder}>New Folder</ContextMenuItem>
           <ContextMenuItem onSelect={handleRename}>Rename</ContextMenuItem>
           <ContextMenuItem onSelect={handleDelete}>Delete</ContextMenuItem>
+          <ContextMenuItem onSelect={() => onMove(folder.id)}>Move to…</ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
 
@@ -113,6 +142,8 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 onCreateFile={onCreateFile}
                 onCreateFolder={onCreateFolder}
                 activeFileId={activeFileId}
+                onMoveNode={onMoveNode}
+                onMove={onMove}
               /> :
               <FileNodeComponent
                 key={child.id}
@@ -122,6 +153,7 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 onRename={onRename}
                 onDelete={onDelete}
                 activeFileId={activeFileId}
+                onMove={onMove}
               />
           )}
         </div>
