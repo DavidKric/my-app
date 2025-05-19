@@ -10,20 +10,20 @@ import { useRecentFiles } from '@/lib/useRecentFiles';
 interface FileTreeProps {
   root: FolderNode;            // the root folder of the project
   searchQuery?: string;
+  activeFileId: string;
   onFileSelect: (file: FileNode) => void;
 }
 
-export default function FileTree({ root, searchQuery = '', onFileSelect }: FileTreeProps) {
+export default function FileTree({ root, searchQuery = '', activeFileId, onFileSelect }: FileTreeProps) {
   const router = useRouter();
   const [treeData, setTreeData] = useState(root);
   const { addFile } = useRecentFiles();
 
   const handleFileSelect = (file: FileNode) => {
+    onFileSelect(file);
     addFile(file);
     if (file.fileType === 'pdf') {
       router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}`);
-    } else {
-      onFileSelect(file);
     }
   };
 
@@ -197,6 +197,7 @@ export default function FileTree({ root, searchQuery = '', onFileSelect }: FileT
             onDelete={deleteFolder}
             onCreateFile={createFile}
             onCreateFolder={createFolder}
+            activeFileId={activeFileId}
             onMoveNode={moveNode}
             onMove={promptMove}
           /> :
@@ -207,6 +208,7 @@ export default function FileTree({ root, searchQuery = '', onFileSelect }: FileT
             onFileSelect={handleFileSelect}
             onRename={renameFile}
             onDelete={deleteFile}
+            activeFileId={activeFileId}
             onMove={promptMove}
           />
       )}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import clsx from 'clsx';
 import { FileNode } from '@/types/file_explorer/file-structure';
 import { FileTextIcon } from 'lucide-react';
 import FileContextMenu from './FileContextMenu';
@@ -11,6 +12,10 @@ interface FileNodeProps {
   onFileSelect: (file: FileNode) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  activeFileId: string;
+}
+
+export default function FileNodeComponent({ file, depth, onFileSelect, onRename, onDelete, activeFileId }: FileNodeProps) {
   /** Triggered when the user selects the "Move to…" action */
   onMove: (id: string) => void;
 }
@@ -39,7 +44,10 @@ export default function FileNodeComponent({ file, depth, onFileSelect, onRename,
   return (
     <FileContextMenu onRename={handleRename} onDelete={handleDelete} onMove={() => onMove(file.id)}>
       <div
-        className="flex items-center cursor-pointer hover:bg-accent hover:text-accent-foreground pr-2"
+        className={clsx(
+          'flex items-center cursor-pointer hover:bg-accent hover:text-accent-foreground pr-2',
+          activeFileId === file.id && 'bg-primary/10 text-primary'
+        )}
         style={indentStyle}
         onClick={() => onFileSelect(file)}
         draggable={true}

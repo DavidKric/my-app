@@ -15,6 +15,10 @@ interface FolderNodeProps {
   onDelete: (id: string) => void;
   onCreateFile: (parentId: string) => void;
   onCreateFolder: (parentId: string) => void;
+  activeFileId: string;
+}
+
+export default function FolderNodeComponent({ folder, depth, onFileSelect, onRename, onDelete, onCreateFile, onCreateFolder, activeFileId }: FolderNodeProps) {
   /** Handle dropping a node onto this folder */
   onMoveNode: (nodeId: string, targetFolderId: string) => void;
   /** Triggered when the user chooses to move this folder via the context menu */
@@ -137,6 +141,7 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 onDelete={onDelete}
                 onCreateFile={onCreateFile}
                 onCreateFolder={onCreateFolder}
+                activeFileId={activeFileId}
                 onMoveNode={onMoveNode}
                 onMove={onMove}
               /> :
@@ -147,6 +152,7 @@ export default function FolderNodeComponent({ folder, depth, onFileSelect, onRen
                 onFileSelect={onFileSelect}
                 onRename={onRename}
                 onDelete={onDelete}
+                activeFileId={activeFileId}
                 onMove={onMove}
               />
           )}
