@@ -2,6 +2,7 @@
 import { Rect } from './hooks/useAdderOnPage'
 import { AnnotationType, Annotation } from '@/components/pdf_viewer/annotations/AnnotationOverlay'
 import { useAnnotations, createAnnotationId } from '@/components/context_panel/annotations/AnnotationProvider'
+import { Button } from '@/components/ui/button'
 
 export default function AnnotationAdder({ rect, rects, text, pageIndex }: { rect: Rect; rects: Rect[]; text: string; pageIndex: number }) {
   const { addAnnotation } = useAnnotations()
@@ -25,10 +26,24 @@ export default function AnnotationAdder({ rect, rects, text, pageIndex }: { rect
   return (
     <div
       style={{ top: rect.top + rect.height, left: rect.left + rect.width / 2 }}
-      className="absolute flex space-x-1 text-xs bg-gray-800 text-white px-2 py-1 rounded"
+      className="absolute z-50 flex gap-1 rounded-md bg-muted p-1 shadow"
     >
-      <button onClick={() => handleAdd(AnnotationType.HIGHLIGHT)}>Highlight</button>
-      <button onClick={() => handleAdd(AnnotationType.NOTE)}>Annotate</button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-2 text-xs"
+        onClick={() => handleAdd(AnnotationType.HIGHLIGHT)}
+      >
+        Highlight
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 px-2 text-xs"
+        onClick={() => handleAdd(AnnotationType.NOTE)}
+      >
+        Annotate
+      </Button>
     </div>
   )
 }

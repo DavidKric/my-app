@@ -59,7 +59,7 @@ export function AIInput({
   }, [isFocused]);
 
   return (
-    <div className={cn("w-full relative", className)}>
+    <div className={cn("w-full relative", className)} aria-busy={isLoading}>
       <div className="relative" ref={containerRef}>
         <motion.div
           initial={false}
@@ -84,6 +84,7 @@ export function AIInput({
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder={placeholderText}
+              aria-label="Chat input"
               className="min-h-[60px] max-h-[200px] resize-none p-3 pr-16 text-sm border-none focus-visible:ring-0 bg-transparent backdrop-blur-sm"
               disabled={isLoading}
               onKeyDown={handleKeyDown}

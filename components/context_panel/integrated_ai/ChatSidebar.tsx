@@ -85,9 +85,9 @@ export default function ChatSidebar({ className, onNewMessage }: ChatSidebarProp
       // Add AI response
       setMockMessages((prev) => [
         ...prev,
-        { 
-          role: "assistant", 
-          content: "This is a simulated response from the AI assistant. In production, this would be streamed from LangGraph. I can help analyze legal documents, highlight important clauses, and help with annotations.", 
+        {
+          role: "assistant",
+          content: "The AI service is currently unavailable. Please try again later.",
           isNew: true
         },
       ]);
@@ -164,8 +164,13 @@ export default function ChatSidebar({ className, onNewMessage }: ChatSidebarProp
       <CardContent className="flex-1 p-0 overflow-hidden bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
         <Tabs value={activeTab} className="h-full flex flex-col">
           <TabsContent value="chat" className="flex-1 flex flex-col m-0 p-0 h-full">
-            <ScrollArea className="flex-1 px-4 py-4">
-              <div className="space-y-4 mb-4">
+            <ScrollArea className="flex-1 px-4 py-4" aria-busy={isLoading}>
+              <div
+                className="space-y-4 mb-4"
+                role="log"
+                aria-live="polite"
+                aria-relevant="additions"
+              >
                 {mockMessages.map((message, i) => (
                   <div
                     key={i}
