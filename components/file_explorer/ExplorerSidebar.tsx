@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import clsx from 'clsx';
-import { Case } from '@/types/file_explorer/file-structure';
+import { Case, FileNode, FolderNode } from '@/types/file_explorer/file-structure';
 import CaseSwitcher from '@/components/file_explorer/CaseSwitcher';
 import SearchBar from './SearchBar';
 import FileTree from './FileTree';
+import SearchResults from './SearchResults';
 
 // Import icons from lucide-react
-import { Pin, PinOff, Folder, Search, Clock, FileText } from 'lucide-react';
+import { Pin, PinOff, Folder, Search, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Define a union type for the active panel.
@@ -22,11 +23,33 @@ interface SidebarProps {
 export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarProps) {
   const [activeProjectId, setActiveProjectId] = useState(cases[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FileNode[]>([]);
   const [pinned, setPinned] = useState(true); // Default to pinned for better usability
   const [hovered, setHovered] = useState(false);
   const [activePanel, setActivePanel] = useState<Panel>('explorer');
 
   const activeProject = cases.find((p) => p.id === activeProjectId);
+
+  const collectFiles = (node: FolderNode | FileNode, query: string, acc: FileNode[]) => {
+    if (node.type === 'file') {
+      if (node.name.toLowerCase().includes(query.toLowerCase())) {
+        acc.push(node);
+      }
+    } else {
+      node.children.forEach(child => collectFiles(child, query, acc));
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim() || !activeProject) {
+      setSearchResults([]);
+      return;
+    }
+    const results: FileNode[] = [];
+    collectFiles(activeProject.root, query, results);
+    setSearchResults(results);
+  };
 
   // Original file explorer content
   const fileExplorerContent = (
@@ -41,7 +64,11 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
       </div>
       {/* Search Bar (within Explorer) */}
       <div className="p-2 border-b border-border">
-        <SearchBar query={searchQuery} onChange={setSearchQuery} />
+        <SearchBar
+          query={searchQuery}
+          onChange={setSearchQuery}
+          onSearch={handleSearch}
+        />
       </div>
       {/* File Tree */}
       <div className="flex-1 overflow-auto">
@@ -63,10 +90,13 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
     <div className="h-full flex flex-col p-2">
       <div className="mb-2 text-lg font-semibold">Search</div>
       {/* You can reuse SearchBar here or create a dedicated one */}
-      <SearchBar query={searchQuery} onChange={setSearchQuery} />
+      <SearchBar
+        query={searchQuery}
+        onChange={setSearchQuery}
+        onSearch={handleSearch}
+      />
       <div className="flex-1 overflow-auto mt-2">
-        {/* Placeholder for search results */}
-        <p className="text-sm text-muted-foreground">Search results will appear here.</p>
+        <SearchResults results={searchResults} />
       </div>
     </div>
   );
