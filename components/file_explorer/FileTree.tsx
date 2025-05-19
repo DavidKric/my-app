@@ -39,10 +39,10 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
   const { addFile } = useRecentFiles();
   const handleFileSelect = (file: FileNode) => {
     onFileSelect(file);
-    addFile(file);
     if (file.fileType === 'pdf') {
       router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}`);
     }
+    addFile(file);
   };
 
   const toggleFolderExpand = (id: string) => {
