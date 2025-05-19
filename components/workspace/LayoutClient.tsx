@@ -19,23 +19,23 @@ interface LayoutClientProps {
 // Animation variants for consistent transitions
 const sidebarVariants = {
   expanded: (width: number) => ({
-    width: width,
+    width,
     opacity: 1,
     transition: {
-      type: "tween",
-      duration: 0.3,
-      ease: "easeInOut"
-    }
+      type: "spring",
+      stiffness: 300,
+      damping: 30,
+    },
   }),
   collapsed: {
     width: 0,
     opacity: 0,
     transition: {
-      type: "tween",
-      duration: 0.3,
-      ease: "easeInOut"
-    }
-  }
+      type: "spring",
+      stiffness: 300,
+      damping: 30,
+    },
+  },
 };
 
 export function LayoutClient({ children, cases }: LayoutClientProps) {
@@ -74,22 +74,25 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
       <AnimatePresence mode="wait">
         {isLeftExpanded && (
           <motion.div
+            id="file-explorer-sidebar"
             variants={sidebarVariants}
             initial="collapsed"
             animate="expanded"
             exit="collapsed"
             custom={320}
-            className="relative h-full border-r border-border bg-background/95 backdrop-blur-sm z-10 shadow-sm"
+            className="relative h-full border-r border-border bg-background/95 backdrop-blur-sm z-10 shadow-sm overflow-hidden"
           >
-            <div className="absolute top-3 right-0 z-20 h-6 w-0 flex items-center justify-center">
+            <div className="absolute top-3 right-0 z-20 w-0 h-8 flex items-center justify-center">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsLeftExpanded(false)}
-                className="h-6 w-6 rounded-full border border-border bg-background shadow-sm transform translate-x-1/2"
+                className="h-8 w-8 rounded-full border border-border bg-background shadow-sm transform translate-x-1/2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
                 aria-label="Collapse file explorer"
+                aria-expanded={isLeftExpanded}
+                aria-controls="file-explorer-sidebar"
               >
-                <ChevronLeft className="h-3 w-3" />
+                <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
             
@@ -102,15 +105,17 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
       
       {/* Expand Button for Left Sidebar - only visible when collapsed */}
       {!isLeftExpanded && (
-        <div className="absolute top-3 left-0 z-20 h-6 flex items-center justify-center">
+        <div className="absolute top-3 left-0 z-20 flex items-center justify-center h-8">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsLeftExpanded(true)}
-            className="h-6 w-6 rounded-full border border-border bg-background shadow-sm ml-2"
+            className="h-8 w-8 rounded-full border border-border bg-background shadow-sm ml-2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
             aria-label="Expand file explorer"
+            aria-expanded={isLeftExpanded}
+            aria-controls="file-explorer-sidebar"
           >
-            <ChevronRight className="h-3 w-3" />
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       )}
@@ -140,22 +145,25 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
       <AnimatePresence mode="wait">
         {isRightExpanded && (
           <motion.div
+            id="context-panel-sidebar"
             variants={sidebarVariants}
             initial="collapsed"
             animate="expanded"
             exit="collapsed"
             custom={380}
-            className="relative h-full border-l border-border bg-background/95 backdrop-blur-sm z-10 shadow-sm"
+            className="relative h-full border-l border-border bg-background/95 backdrop-blur-sm z-10 shadow-sm overflow-hidden"
           >
-            <div className="absolute top-3 left-0 z-20 h-6 w-0 flex items-center justify-center">
+            <div className="absolute top-3 left-0 z-20 w-0 h-8 flex items-center justify-center">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsRightExpanded(false)}
-                className="h-6 w-6 rounded-full border border-border bg-background shadow-sm transform -translate-x-1/2"
+                className="h-8 w-8 rounded-full border border-border bg-background shadow-sm transform -translate-x-1/2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
                 aria-label="Collapse context panel"
+                aria-expanded={isRightExpanded}
+                aria-controls="context-panel-sidebar"
               >
-                <ChevronRight className="h-3 w-3" />
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
             
@@ -168,15 +176,17 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
       
       {/* Expand Button for Right Sidebar - only visible when collapsed */}
       {!isRightExpanded && (
-        <div className="absolute top-3 right-0 z-20 h-6 flex items-center justify-center">
+        <div className="absolute top-3 right-0 z-20 flex items-center justify-center h-8">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsRightExpanded(true)}
-            className="h-6 w-6 rounded-full border border-border bg-background shadow-sm mr-2"
+            className="h-8 w-8 rounded-full border border-border bg-background shadow-sm mr-2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
             aria-label="Expand context panel"
+            aria-expanded={isRightExpanded}
+            aria-controls="context-panel-sidebar"
           >
-            <ChevronLeft className="h-3 w-3" />
+            <ChevronLeft className="h-4 w-4" />
           </Button>
         </div>
       )}
