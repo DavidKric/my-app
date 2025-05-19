@@ -11,12 +11,15 @@ import {
 interface FileContextMenuProps {
   onRename: () => void;
   onDelete: () => void;
+  /** Optional move handler shown as "Move to…" in the menu */
+  onMove?: () => void;
   children: React.ReactNode;
 }
 
 export default function FileContextMenu({
   onRename,
   onDelete,
+  onMove,
   children,
 }: FileContextMenuProps) {
   return (
@@ -27,7 +30,9 @@ export default function FileContextMenu({
       <ContextMenuContent>
         <ContextMenuItem onSelect={onRename}>Rename</ContextMenuItem>
         <ContextMenuItem onSelect={onDelete}>Delete</ContextMenuItem>
-        {/* Additional file-specific actions (e.g., "Download", "Move") can be added here */}
+        {onMove && (
+          <ContextMenuItem onSelect={onMove}>Move to…</ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );
