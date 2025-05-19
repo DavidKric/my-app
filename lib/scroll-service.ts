@@ -127,7 +127,7 @@ export class ScrollService {
     const container = document.querySelector(containerSelector);
     if (!container) return null;
     
-    const pages = container.querySelectorAll('.react-pdf__Page');
+    const pages = container.querySelectorAll('[data-page-number]');
     if (!pages.length) return null;
     
     const containerRect = container.getBoundingClientRect();
