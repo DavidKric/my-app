@@ -240,6 +240,7 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
             onRename={renameFile}
             onDelete={deleteFile}
             activeFileId={activeFileId}
+            onMoveNode={moveNode}
             onMove={promptMove}
           />
       )}
