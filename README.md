@@ -85,6 +85,8 @@ This application leverages the professional @allenai/pdf-components library for 
 - `HighlightOverlay`: For displaying highlights on PDF pages
 - Various context providers for document state management
 
+See [docs/pdf-components-usage.md](docs/pdf-components-usage.md) for a summary of where these components are used in the codebase.
+
 Custom UI components are built on top of these foundational components to create a cohesive and feature-rich application.
 
 ## Context Sidebar and AI Copilot
