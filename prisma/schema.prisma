@@ -18,6 +18,7 @@ model Annotation {
   selectedText String
   note        String
   tags        String   // Stored as JSON string
+  flagged     Boolean  @default(false)
   parentId    String?  // Optional field, no default needed
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

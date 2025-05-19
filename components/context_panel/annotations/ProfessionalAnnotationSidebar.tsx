@@ -24,15 +24,17 @@ import {
   Clock,
   User,
   Calendar,
-  Check
+  Check,
+  Flag
 } from "lucide-react";
-import { 
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { useAnnotations } from "./AnnotationProvider";
 
 // Types
 export interface Annotation {
@@ -52,6 +54,7 @@ export interface Annotation {
     page?: number;
     url?: string;
   };
+  flagged?: boolean;
 }
 
 export interface Comment {
@@ -121,6 +124,7 @@ const AnnotationCard = ({
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(expanded);
   const [showComments, setShowComments] = React.useState(false);
+  const { updateAnnotation } = useAnnotations();
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -182,10 +186,29 @@ const AnnotationCard = ({
 
               <Separator className="my-3" />
 
+              <div className="flex items-center gap-2 mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => navigator.clipboard.writeText(`${location.href}#ann-${annotation.id}`)}
+                >
+                  <LinkIcon className="h-3 w-3" /> Share
+                </Button>
+                <Button
+                  variant={annotation.flagged ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() => updateAnnotation(annotation.id, { flagged: !annotation.flagged })}
+                >
+                  <Flag className="h-3 w-3" /> {annotation.flagged ? 'Flagged' : 'Flag'}
+                </Button>
+              </div>
+
               <div className="flex items-center justify-between">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="h-7 gap-1 text-xs"
                   onClick={() => setShowComments(!showComments)}
                 >
@@ -518,7 +541,8 @@ export const mockAnnotations: Annotation[] = [
       source: "California Business and Professions Code",
       page: 16700,
       url: "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=16700"
-    }
+    },
+    flagged: false
   },
   {
     id: "2",
@@ -539,7 +563,8 @@ export const mockAnnotations: Annotation[] = [
         },
         createdAt: new Date("2023-10-14T11:25:00")
       }
-    ]
+    ],
+    flagged: false
   },
   {
     id: "3",
@@ -551,7 +576,8 @@ export const mockAnnotations: Annotation[] = [
     author: {
       name: "Sarah Williams"
     },
-    comments: []
+    comments: [],
+    flagged: false
   },
   {
     id: "4",
@@ -576,6 +602,7 @@ export const mockAnnotations: Annotation[] = [
     citation: {
       source: "Master Services Agreement",
       page: 1,
-    }
+    },
+    flagged: false
   }
-]; 
+];

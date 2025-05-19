@@ -12,6 +12,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const data = await req.json()
-  const annotation = await prisma.annotation.create({ data })
+  const annotation = await prisma.annotation.create({ data: { flagged: false, ...data } })
   return NextResponse.json(annotation)
 }

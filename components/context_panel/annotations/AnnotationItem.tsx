@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageSquare, Highlighter, PenTool, Star, FileText, Lightbulb, BookMarked, ExternalLink } from 'lucide-react';
+import { MessageSquare, Highlighter, PenTool, Star, FileText, Lightbulb, BookMarked, ExternalLink, Link, Flag } from 'lucide-react';
 import { Annotation, AnnotationType } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import scrollService from '@/lib/scroll-service';
+import { useAnnotations } from './AnnotationProvider';
 
 interface AnnotationItemProps {
   annotation: Annotation;
@@ -12,12 +14,13 @@ interface AnnotationItemProps {
   onClick: () => void;
 }
 
-export const AnnotationItem: React.FC<AnnotationItemProps> = ({ 
-  annotation, 
-  isSelected, 
+export const AnnotationItem: React.FC<AnnotationItemProps> = ({
+  annotation,
+  isSelected,
   onClick
 }) => {
   const itemRef = useRef<HTMLDivElement>(null);
+  const { updateAnnotation } = useAnnotations();
   
   // Scroll into view if selected
   useEffect(() => {
@@ -186,7 +189,32 @@ export const AnnotationItem: React.FC<AnnotationItemProps> = ({
           </p>
         )}
         {renderImportance()}
+        <div className="mt-2 flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 gap-1 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(`${location.href}#ann-${annotation.id}`);
+            }}
+          >
+            <Link className="h-3 w-3" /> Share
+          </Button>
+          <Button
+            variant={annotation.flagged ? 'default' : 'ghost'}
+            size="sm"
+            className="h-6 gap-1 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              updateAnnotation(annotation.id, { flagged: !annotation.flagged });
+            }}
+          >
+            <Flag className="h-3 w-3" />
+            {annotation.flagged ? 'Flagged' : 'Flag'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
-}; 
+};
