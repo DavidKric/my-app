@@ -35,7 +35,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { useAnnotations } from "./AnnotationProvider";
 
 // Types
 export interface Annotation {
