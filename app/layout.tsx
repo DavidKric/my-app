@@ -32,20 +32,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Disable service worker registration */}
-        <meta name="x-pdf-no-worker" content="true" />
-        
-        {/* Move scripts to Next.js Script component with onLoad */}
-        <Script 
-          id="dynamic-import-polyfill"
-          src="/dynamic-import-polyfill.js"
-          strategy="beforeInteractive"
-        />
-        <Script 
-          id="parser-selectors-fix"
-          src="/fix-parser-selectors.js"
-          strategy="beforeInteractive"
-        />
         {/* We no longer need the PDF worker script since we're managing the worker in pdf-setup.ts */}
         <Script 
           id="sw-cleanup"
