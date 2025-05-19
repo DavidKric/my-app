@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { useAnnotations } from "./AnnotationProvider";
 import { 
   BookText, 
   AlertTriangle, 
@@ -43,12 +44,14 @@ export interface Annotation {
   text: string;
   excerpt: string;
   page: number;
+  groupId?: string;
   createdAt: Date;
   author: {
     name: string;
     avatar?: string;
   };
   comments: Comment[];
+  tags: string[];
   citation?: {
     source: string;
     page?: number;
@@ -113,12 +116,12 @@ const AnnotationTypeBadge = ({ type }: { type: Annotation["type"] }) => (
   </Badge>
 );
 
-const AnnotationCard = ({ 
-  annotation, 
-  expanded = false, 
-  onClick 
-}: { 
-  annotation: Annotation; 
+const AnnotationCard = ({
+  annotation,
+  expanded = false,
+  onClick
+}: {
+  annotation: Annotation;
   expanded?: boolean;
   onClick?: () => void;
 }) => {
@@ -149,6 +152,38 @@ const AnnotationCard = ({
 
         <div className="mt-2">
           <p className="text-sm font-medium">{annotation.text}</p>
+
+          {(annotation.tags && annotation.tags.length > 0) || isExpanded ? (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {annotation.tags.map(tag => (
+                <Badge key={tag} variant="secondary" className="pr-1">
+                  {tag}
+                  {isExpanded && (
+                    <button
+                      className="ml-1 text-muted-foreground hover:text-foreground"
+                      onClick={() => handleRemoveTag(tag)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ))}
+              {isExpanded && (
+                <Input
+                  value={newTag}
+                  onChange={e => setNewTag(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  placeholder="Add tag"
+                  className="h-6 w-20 px-1 py-0 text-xs"
+                />
+              )}
+            </div>
+          ) : null}
           
           {isExpanded && (
             <div className="mt-2">
@@ -255,22 +290,37 @@ export function AnnotationSidebar({
 }: AnnotationSidebarProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedTypes, setSelectedTypes] = React.useState<Annotation["type"][]>([]);
+  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [sortBy, setSortBy] = React.useState<"newest" | "oldest" | "type">("newest");
+  const [selectedGroup, setSelectedGroup] = React.useState<string>("all");
+  const groups = React.useMemo(
+    () => Array.from(new Set(annotations.map(a => a.groupId).filter(Boolean))),
+    [annotations]
+  );
+
+  const allTags = React.useMemo(() => {
+    const tags = new Set<string>();
+    annotations.forEach(a => a.tags?.forEach(t => tags.add(t)));
+    return Array.from(tags);
+  }, [annotations]);
 
   // Filter annotations based on search, type, and current page
   const filteredAnnotations = React.useMemo(() => {
     return annotations.filter(annotation => {
       // Filter by search query
-      const matchesSearch = searchQuery === "" || 
+      const matchesSearch = searchQuery === "" ||
         annotation.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
         annotation.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-      
+
       // Filter by selected types
       const matchesType = selectedTypes.length === 0 || selectedTypes.includes(annotation.type);
-      
-      return matchesSearch && matchesType;
+      const matchesTags =
+        selectedTags.length === 0 ||
+        (annotation.tags && annotation.tags.some(t => selectedTags.includes(t)));
+
+      return matchesSearch && matchesType && matchesTags;
     });
-  }, [annotations, searchQuery, selectedTypes]);
+  }, [annotations, searchQuery, selectedTypes, selectedTags]);
 
   // Get annotations for current page
   const currentPageAnnotations = React.useMemo(() => {
@@ -328,21 +378,45 @@ export function AnnotationSidebar({
   }, [filteredAnnotations]);
 
   const toggleType = (type: Annotation["type"]) => {
-    setSelectedTypes(prev => 
-      prev.includes(type) 
-        ? prev.filter(t => t !== type) 
+    setSelectedTypes(prev =>
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
         : [...prev, type]
+    );
+  };
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
   };
 
   const clearFilters = () => {
     setSelectedTypes([]);
+    setSelectedTags([]);
     setSearchQuery("");
+    setSelectedGroup("all");
   };
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
       <div className="border-b p-4">
+        {groups.length > 0 && (
+          <div>
+            <select
+              className="w-full rounded-md border bg-background px-2 py-1 text-sm"
+              value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}
+            >
+              <option value="all">All Groups</option>
+              {groups.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="mt-2">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -381,7 +455,7 @@ export function AnnotationSidebar({
               <span className="ml-1 capitalize">{type}</span>
             </Badge>
           ))}
-          {(selectedTypes.length > 0 || searchQuery) && (
+          {(selectedTypes.length > 0 || searchQuery || selectedTags.length > 0) && (
             <Button
               variant="ghost"
               size="sm"
@@ -392,6 +466,20 @@ export function AnnotationSidebar({
             </Button>
           )}
         </div>
+        {allTags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {allTags.map(tag => (
+              <Badge
+                key={tag}
+                variant={selectedTags.includes(tag) ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => toggleTag(tag)}
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
@@ -430,7 +518,7 @@ export function AnnotationSidebar({
               ) : (
                 <div className="flex h-32 flex-col items-center justify-center text-center text-muted-foreground">
                   <p>No annotations found</p>
-                  {(selectedTypes.length > 0 || searchQuery) && (
+                  {(selectedTypes.length > 0 || searchQuery || selectedTags.length > 0) && (
                     <Button
                       variant="link"
                       size="sm"
@@ -514,6 +602,7 @@ export const mockAnnotations: Annotation[] = [
     text: "Non-Compete Clause",
     excerpt: "The Contractor agrees not to engage in any activity that competes with the Company for a period of two years after termination.",
     page: 2,
+    groupId: "group-a",
     createdAt: new Date("2023-10-15T14:30:00"),
     author: {
       name: "Jane Smith",
@@ -537,6 +626,7 @@ export const mockAnnotations: Annotation[] = [
         createdAt: new Date("2023-10-16T09:20:00")
       }
     ],
+    tags: ["contract", "non-compete"],
     citation: {
       source: "California Business and Professions Code",
       page: 16700,
@@ -550,6 +640,7 @@ export const mockAnnotations: Annotation[] = [
     text: "Liability Limitation",
     excerpt: "Company's liability shall not exceed the total amount paid by Client in the 12 months preceding any claim.",
     page: 3,
+    groupId: "group-a",
     createdAt: new Date("2023-10-14T11:20:00"),
     author: {
       name: "Michael Chen"
@@ -572,6 +663,7 @@ export const mockAnnotations: Annotation[] = [
     text: "Intellectual Property Definition",
     excerpt: "\"Intellectual Property\" means all patents, trademarks, copyrights, trade secrets, and other proprietary rights.",
     page: 1,
+    groupId: "group-b",
     createdAt: new Date("2023-10-13T09:15:00"),
     author: {
       name: "Sarah Williams"
@@ -585,6 +677,7 @@ export const mockAnnotations: Annotation[] = [
     text: "Reference to Master Agreement",
     excerpt: "This Statement of Work is governed by the terms of the Master Services Agreement dated January 1, 2023.",
     page: 2,
+    groupId: "group-b",
     createdAt: new Date("2023-10-12T16:40:00"),
     author: {
       name: "David Lee"
@@ -599,6 +692,7 @@ export const mockAnnotations: Annotation[] = [
         createdAt: new Date("2023-10-12T17:30:00")
       }
     ],
+    tags: ["reference"],
     citation: {
       source: "Master Services Agreement",
       page: 1,
