@@ -18,6 +18,8 @@ interface FolderNodeProps {
   onCreateFile: (parentId: string) => void;
   onCreateFolder: (parentId: string) => void;
   activeFileId: string;
+  onMoveNode: (nodeId: string, targetFolderId: string) => void;
+  onMove: (id: string) => void;
 }
 
 export default function FolderNodeComponent({
@@ -30,6 +32,9 @@ export default function FolderNodeComponent({
   onDelete,
   onCreateFile,
   onCreateFolder,
+  activeFileId,
+  onMoveNode,
+  onMove
 }: FolderNodeProps) {
   const isExpanded = expandedFolders[folder.id] || false;
   const [isRenaming, setIsRenaming] = useState(false);

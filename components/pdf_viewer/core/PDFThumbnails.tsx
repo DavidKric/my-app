@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ThumbnailList } from '@allenai/pdf-components';
+import { ThumbnailList } from 'davidkric-pdf-components';
 
 interface PDFThumbnailsProps {
   fileUrl: string;

@@ -1,8 +1,5 @@
 'use client';
 
-// Import the centralized PDF setup
-import '@/lib/pdf-setup';
-
 import React, { useState, useEffect, useRef, Suspense, useContext, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useAnnotations } from '@/components/context_panel/annotations/AnnotationProvider';
@@ -41,7 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip } from '@/components/ui/tooltip';
 import PDFErrorBoundary from './PDFErrorBoundary';
 import scrollService, { ScrollPosition } from '@/lib/scroll-service';
-import { 
+import {
   DEFAULT_ZOOM_SCALE,
   RENDER_TYPE,
   ZoomInButton, 
@@ -60,7 +57,7 @@ import {
   scrollToPdfPageIndex,
   PrintButton,
   Outline
-} from '@allenai/pdf-components';
+} from 'davidkric-pdf-components';
 import {
   Dialog,
   DialogContent,
@@ -729,9 +726,18 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     window.print();
   }, []);
 
+  // Debug: log state on every render
+  useEffect(() => {
+    console.log('[DEBUG][PDFViewer] rawFileUrl:', rawFileUrl, 'fileUrl:', fileUrl, 'pdfData:', pdfData, 'error:', error);
+  }, [rawFileUrl, fileUrl, pdfData, error]);
+
   // Render the PDF viewer UI
   return (
     <ContextProvider>
+      {/* Debug banner */}
+      <div style={{ background: '#444', color: '#fff', padding: 6, fontSize: 12, zIndex: 999 }}>
+        <b>PDFViewer Debug:</b> rawFileUrl: {String(rawFileUrl)} | fileUrl: {String(fileUrl)} | pdfData: {pdfData ? 'yes' : 'no'} | error: {String(error)}
+      </div>
       <div 
         className="pdf-viewer-container flex flex-col w-full h-full relative" 
         ref={containerRef}

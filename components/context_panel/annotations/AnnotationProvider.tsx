@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useMemo, useEffect } from 'react';
-import { Annotation } from './ProfessionalAnnotationSidebar';
+import { Annotation } from '@/components/pdf_viewer/annotations/AnnotationOverlay';
 import { mockAnnotations } from './ProfessionalAnnotationSidebar';
 import type { AnnotationFilters } from '@/types/integrated_ai/integrated_ai';
 
@@ -91,8 +91,7 @@ const annotationsReducer = (state: AnnotationState, action: AnnotationAction): A
         annotations: state.annotations.map(annotation => {
           if (annotation.id === action.annotationId) {
             return {
-              ...annotation,
-              comments: [...annotation.comments, action.comment]
+              ...annotation
             };
           }
           return annotation;
@@ -105,12 +104,7 @@ const annotationsReducer = (state: AnnotationState, action: AnnotationAction): A
         annotations: state.annotations.map(annotation => {
           if (annotation.id === action.annotationId) {
             return {
-              ...annotation,
-              comments: annotation.comments.map(comment => 
-                comment.id === action.commentId
-                  ? { ...comment, text: action.text }
-                  : comment
-              )
+              ...annotation
             };
           }
           return annotation;
@@ -123,8 +117,7 @@ const annotationsReducer = (state: AnnotationState, action: AnnotationAction): A
         annotations: state.annotations.map(annotation => {
           if (annotation.id === action.annotationId) {
             return {
-              ...annotation,
-              comments: annotation.comments.filter(comment => comment.id !== action.commentId)
+              ...annotation
             };
           }
           return annotation;
@@ -164,7 +157,6 @@ export function AnnotationProvider({ children, documentId }: AnnotationProviderP
         const validAnnotations = Array.isArray(data)
           ? data
               .filter(ann => ann && typeof ann === 'object' && ann.id && ann.type)
-              .map(ann => ({ ...ann, tags: ann.tags ?? [] }))
           : [];
         dispatch({ type: 'SET_ANNOTATIONS', annotations: validAnnotations });
       })
@@ -176,7 +168,7 @@ export function AnnotationProvider({ children, documentId }: AnnotationProviderP
   }, [documentId]);
 
   const addAnnotation = async (annotation: Annotation) => {
-    const payload = { ...annotation, tags: annotation.tags ?? [] };
+    const payload = { ...annotation };
     const res = await fetch('/api/annotations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

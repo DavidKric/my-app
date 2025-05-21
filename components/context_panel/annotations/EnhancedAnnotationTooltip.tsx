@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Reply, ThumbsUp, Flag, Heart, Share } from "lucide-react";
-import { useAnnotationEffects } from "@/components/pdf/SelectionEffects";
 
 interface EnhancedAnnotationTooltipProps {
   annotation: {
@@ -45,9 +44,6 @@ export function EnhancedAnnotationTooltip({
   const [isLiked, setIsLiked] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const likeButtonRef = useRef<HTMLButtonElement>(null);
-  
-  // Get the annotation effects hook
-  const { handleAnnotationLiked } = useAnnotationEffects();
   
   // Handle animation states
   useEffect(() => {
@@ -97,11 +93,6 @@ export function EnhancedAnnotationTooltip({
     }
     
     setIsLiked(true);
-    
-    // Show the radiating effect on the like button
-    if (likeButtonRef.current) {
-      handleAnnotationLiked(likeButtonRef.current);
-    }
   };
 
   // If not visible, don't render

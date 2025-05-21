@@ -21,8 +21,9 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "components/*": ["components/*"],
-      "@allenai/pdf-components": ["node_modules/@allenai/pdf-components/dist/index.d.ts"]
+      "components/*": ["./components/*"],
+      "pdf-components": ["../pdf-components/src/index.ts"],
+      "pdf-components/*": ["../pdf-components/src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

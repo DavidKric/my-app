@@ -1,7 +1,7 @@
 // next.config.js
 const nextConfig = {
   // Ensure the third-party package is transpiled by Next:
-  transpilePackages: ['@allenai/pdf-components'],
+  transpilePackages: ['davidkric-pdf-components'],
 
   // Add Turbopack's loader config at the top level:
   experimental: {

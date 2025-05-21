@@ -1,8 +1,5 @@
 'use client';
 
-// Import the centralized PDF setup
-import '@/lib/pdf-setup';
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -88,6 +85,11 @@ export default function PDFViewerPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [useDirectViewer, setUseDirectViewer] = useState(false);
 
+  // Debug: log state on every render
+  useEffect(() => {
+    console.log('[DEBUG][PDFViewerPage] fileParam:', fileParam, 'fileUrl:', fileUrl, 'pdfData:', pdfData, 'loading:', loading, 'error:', error);
+  }, [fileParam, fileUrl, pdfData, loading, error]);
+
   useEffect(() => {
     async function prepareFileUrl() {
       setLoading(true);
@@ -101,6 +103,18 @@ export default function PDFViewerPage() {
         if (!fileParam) {
           console.log("No file parameter - using default example.pdf");
           setFileUrl('/sample-pdfs/contract.pdf');
+          setLoading(false);
+          return;
+        }
+        
+        // Special handling for arXiv files
+        if (fileParam.startsWith('file-arxiv-')) {
+          // Extract the arXiv ID from the param
+          const arxivId = fileParam.replace('file-arxiv-', '').replace(/-/g, '.');
+          const arxivUrl = `https://arxiv.org/pdf/${arxivId}`;
+          const proxyUrl = `/api/proxy/pdf?url=${encodeURIComponent(arxivUrl)}`;
+          console.log("Using arXiv proxy URL:", proxyUrl);
+          setFileUrl(proxyUrl);
           setLoading(false);
           return;
         }
@@ -225,6 +239,10 @@ export default function PDFViewerPage() {
 
   return (
     <div className="h-full w-full flex flex-col">
+      {/* Debug banner */}
+      <div style={{ background: '#222', color: '#fff', padding: 8, fontSize: 12, zIndex: 1000 }}>
+        <b>PDFViewerPage Debug:</b> fileParam: {String(fileParam)} | fileUrl: {String(fileUrl)} | pdfData: {pdfData ? 'yes' : 'no'} | loading: {String(loading)} | error: {String(error)}
+      </div>
       {/* Add the resource controller to handle preload warnings */}
       <ResourceController />
       <div className="flex-1">

@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { FolderNode, FileNode } from '@/types/file_explorer/file-structure';
 import FolderNodeComponent from './FolderNode';
 import FileNodeComponent from './FileNode';
-import { loadFileTreeState, saveFileTreeState } from '@/lib/fileTreeStorage';
+import { loadFileTreeState, saveFileTreeState, clearFileTreeState } from '@/lib/fileTreeStorage';
 import { useRecentFiles } from '@/lib/useRecentFiles';
+import { isEqual } from 'lodash';
 
 
 interface FileTreeProps {
@@ -24,12 +25,17 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
 
   useEffect(() => {
     const stored = loadFileTreeState();
-    if (stored) {
+    if (stored && isEqual(stored.treeData, root)) {
       setTreeData(stored.treeData);
       setExpandedFolders(stored.expanded || {});
+    } else {
+      // If the root prop has changed, reset localStorage and use the new root
+      setTreeData(root);
+      setExpandedFolders({});
+      clearFileTreeState();
     }
     setHydrated(true);
-  }, []);
+  }, [root]);
 
   useEffect(() => {
     if (hydrated) {
@@ -156,13 +162,16 @@ export default function FileTree({ root, searchQuery = '', activeFileId, onFileS
 
       const remove = (node: FolderNode): FolderNode => ({
         ...node,
-        children: node.children.flatMap(child => {
+        children: node.children.map(child => {
           if (child.id === nodeId) {
             moving = child;
-            return [];
+            return null;
           }
-          return child.type === 'folder' ? [remove(child)] : [child];
-        }),
+          if (child.type === 'folder') {
+            return remove(child);
+          }
+          return child;
+        }).filter(Boolean) as Array<FolderNode | FileNode>,
       });
 
       const add = (node: FolderNode): FolderNode => {

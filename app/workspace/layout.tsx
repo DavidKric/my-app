@@ -49,7 +49,7 @@ async function fetchCasesData(): Promise<Case[]> {
                 fileType: 'pdf' as const,
                 parentId: 'folder-pleadings',
                 path: '/sample-pdfs/contract.pdf'
-              }
+              },
             ]
           },
           {
@@ -70,6 +70,14 @@ async function fetchCasesData(): Promise<Case[]> {
                     type: 'file' as const,
                     fileType: 'pdf' as const,
                     parentId: 'folder-interrogatories'
+                  },
+                  {
+                    id: 'file-arxiv-2404-16130',
+                    name: 'arxiv-2404.16130.pdf',
+                    type: 'file' as const,
+                    fileType: 'pdf' as const,
+                    parentId: 'folder-interrogatories',
+                    url: 'https://arxiv.org/pdf/2404.16130'
                   }
                 ]
               }

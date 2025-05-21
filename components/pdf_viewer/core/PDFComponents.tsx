@@ -1,8 +1,5 @@
 'use client';
 
-// Import the PDF setup file which configures the PDF.js worker
-import '@/lib/pdf-setup';
-
 import React, { useState, useEffect, useCallback, useRef, useMemo, useContext } from 'react';
 // Use only AllenAI PDF Components imports - no direct react-pdf imports
 import { 
@@ -18,7 +15,7 @@ import {
   Overlay,
   computeBoundingBoxStyle,
   ContextProvider
-} from '@allenai/pdf-components';
+} from 'davidkric-pdf-components';
 
 import { AnnotationOverlay, Annotation, AnnotationType } from '../annotations/AnnotationOverlay';
 import PDFErrorBoundary from './PDFErrorBoundary';
@@ -182,12 +179,11 @@ export default function PDFComponents({
     if (pdfData && pdfData.byteLength > 0) {
       return { data: pdfData };
     }
-    
     if (!normalizedFileUrl) {
       setError('No valid PDF source provided');
       return undefined;
     }
-    
+    // Always pass a string URL for remote/proxy PDFs
     return normalizedFileUrl;
   }, [pdfData, normalizedFileUrl]);
 
@@ -288,6 +284,10 @@ export default function PDFComponents({
     </div>
   ), [error, normalizedFileUrl]);
 
+  // Debug: log state on every render
+  useEffect(() => {
+    console.log('[DEBUG][PDFComponents] fileUrl:', fileUrl, 'fileSource:', fileSource, 'error:', error);
+  }, [fileUrl, fileSource, error]);
 
   // Show loading indicator while loading
   if (loading) {
@@ -316,12 +316,21 @@ export default function PDFComponents({
   // Log information for debugging
   console.log('[PDF] Rendering with file source:', fileSource);
 
+  // Add explicit log for the URL if fileSource is a string
+  if (typeof fileSource === 'string') {
+    console.log('[PDF] DocumentWrapper will receive URL:', fileSource);
+  }
+
   // Filter annotations for the current page to keep rendering efficient
   const currentPageAnnotations = annotations.filter(a => a.pageNumber === currentPage);
 
   // Main PDF viewer using AllenAI components
   return (
     <ContextProvider>
+      {/* Debug banner */}
+      <div style={{ background: '#666', color: '#fff', padding: 4, fontSize: 12, zIndex: 998 }}>
+        <b>PDFComponents Debug:</b> fileUrl: {String(fileUrl)} | fileSource: {typeof fileSource === 'string' ? fileSource : (fileSource && fileSource.data ? '[binary data]' : String(fileSource))} | error: {String(error)}
+      </div>
       <div 
         className="pdf-container w-full h-full relative overflow-auto" 
         ref={containerRef}
@@ -339,10 +348,13 @@ export default function PDFComponents({
         {/* Main PDF Document component using AllenAI's DocumentWrapper */}
         <DocumentWrapper 
           file={fileSource}
-          onLoadSuccess={handleLoadSuccess}
-          onLoadError={handleLoadError}
           renderType={RENDER_TYPE.SINGLE_CANVAS}
           className={error ? "hidden" : ""}
+          error={(err) => (
+            <div style={{ color: 'red', padding: 16 }}>
+              <b>PDF Load Error:</b> {err?.message || String(err)}
+            </div>
+          )}
         >
           {Array.from(new Array(numPages || 0), (_, index) => {
             const pageNumber = index + 1;
