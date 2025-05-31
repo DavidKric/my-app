@@ -1,4 +1,4 @@
-import { HighlightOverlay, BoundingBox } from 'davidkric-pdf-components';
+import { HighlightOverlay, BoundingBox } from '@davidkric/pdf-components';
 import React from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 

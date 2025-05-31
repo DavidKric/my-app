@@ -57,7 +57,7 @@ import {
   scrollToPdfPageIndex,
   PrintButton,
   Outline
-} from 'davidkric-pdf-components';
+} from '@davidkric/pdf-components';
 import {
   Dialog,
   DialogContent,
@@ -141,83 +141,10 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     
     console.log('Processing raw file URL:', rawFileUrl);
     
-    // If it includes "file-" in the URL, it's likely a reference to one of our sample PDFs
-    if (rawFileUrl.includes('file=') || rawFileUrl.includes('file-')) {
-      // Extract the file name from the URL parameter
-      let fileName = '';
-      
-      if (rawFileUrl.includes('file=')) {
-        const parts = rawFileUrl.split('file=');
-        if (parts.length > 1) {
-          fileName = parts[1].split('&')[0]; // Extract file name and remove any other parameters
-        }
-      } else if (rawFileUrl.includes('file-')) {
-        const parts = rawFileUrl.split('file-');
-        if (parts.length > 1) {
-          fileName = parts[1].split('&')[0]; // Extract file name and remove any other parameters
-        }
-      }
-      
-      // If we have a file name, construct the path to our sample PDF
-      if (fileName) {
-        const sampleUrl = `/sample-pdfs/${fileName}.pdf`;
-        console.log('Using sample PDF URL:', sampleUrl);
-        return sampleUrl;
-      }
-    }
-    
-    // Handle different URL formats
-    if (rawFileUrl.startsWith('http://') || rawFileUrl.startsWith('https://')) {
-      console.log('Using external URL:', rawFileUrl);
-      return rawFileUrl;
-    } else if (rawFileUrl.startsWith('/')) {
-      console.log('Using absolute path:', rawFileUrl);
-      return rawFileUrl;
-    } else {
-      // For relative paths, add leading slash
-      console.log('Converting relative path to absolute:', `/${rawFileUrl}`);
-      return `/${rawFileUrl}`;
-    }
+    // Just return the processed URL as-is
+    return rawFileUrl;
   }, [rawFileUrl, pdfData]);
 
-  // Access context values using React's useContext hook
-  const transformContext = useContext(TransformContext);
-  const scrollContext = useContext(ScrollContext);
-  const uiContext = useContext(UiContext);
-  const documentContext = useContext(DocumentContext);
-  
-  // Destructure the context values
-  const { 
-    scale: contextScale, 
-    setScale: setContextScale,
-    rotation: contextRotation,
-    setRotation: setContextRotation
-  } = transformContext;
-  
-  const {
-    scrollToPage,
-    isPageVisible,
-    setScrollRoot
-  } = scrollContext;
-  
-  const {
-    isLoading: uiIsLoading,
-    setIsLoading: setUiIsLoading,
-    errorMessage,
-    setErrorMessage,
-    isShowingOutline,
-    setIsShowingOutline,
-    isShowingThumbnail,
-    setIsShowingThumbnail
-  } = uiContext;
-  
-  const {
-    numPages: docNumPages,
-    setNumPages: setDocNumPages,
-    outline: docOutline,
-    setOutline: setDocOutline
-  } = documentContext;
-  
   // Keep some local state for compatibility and UI-specific features
   const [page, setPage] = useState<number>(currentPage);
   const [numPages, setNumPages] = useState<number>(0);
@@ -234,46 +161,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const [showShortcutsDialog, setShowShortcutsDialog] = useState<boolean>(false);
   
   // Keep local state for scale and rotation
-  const [scale, setScale] = useState(contextScale || 1);
-  const [rotation, setRotation] = useState(contextRotation || 0);
+  const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
   
-  // Synchronize local state with context
-  useEffect(() => {
-    if (contextScale && contextScale !== scale) {
-      setScale(contextScale);
-    }
-  }, [contextScale, scale]);
-
-  useEffect(() => {
-    if (contextRotation !== undefined && contextRotation !== rotation) {
-      setRotation(contextRotation);
-    }
-  }, [contextRotation, rotation]);
-  
-  // Update error state to match context
-  useEffect(() => {
-    if (errorMessage) {
-      setError(errorMessage);
-    }
-  }, [errorMessage]);
-  
-  // Set scroll root on component mount
-  useEffect(() => {
-    if (containerRef.current) {
-      try {
-        // Make sure setScrollRoot exists before calling it
-        if (typeof setScrollRoot === 'function') {
-          console.log('[PDF] Setting scroll root element');
-          setScrollRoot(containerRef.current);
-        } else {
-          console.warn('[PDF] setScrollRoot is not available. ScrollContext may not be properly initialized.');
-        }
-      } catch (error) {
-        console.error('[PDF] Error setting scroll root:', error);
-      }
-    }
-  }, [containerRef, setScrollRoot]);
-
   // Sync the internal and external active annotation tool
   useEffect(() => {
     if (externalActiveAnnotationTool !== undefined) {
@@ -300,38 +190,30 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     }
   }, [annotations]);
 
-  // Update handleDocumentLoadSuccess to use context
+  // Update handleDocumentLoadSuccess to work without context
   const handleDocumentLoadSuccess = ({ numPages, outline }: { numPages: number, outline?: any[] }) => {
-    // Update both local and context state
+    // Update local state only
     setNumPages(numPages);
-    setDocNumPages(numPages);
-    setUiIsLoading(false);
     
     if (outline) {
       setOutline(outline);
-      setDocOutline(outline);
     }
     
     // Auto-fit to width on initial load
     handleFitToWidth();
   };
 
-  // Update handleDocumentLoadError to use context
+  // Update handleDocumentLoadError to work without context
   const handleDocumentLoadError = (err: Error) => {
     console.error('Error loading PDF document:', err);
     const errorMessage = `Failed to load the PDF document: ${err.message}`;
     setError(errorMessage);
-    setErrorMessage(errorMessage);
-    setUiIsLoading(false);
   };
 
-  // Update handlePageChange to use ScrollContext
+  // Update handlePageChange to work without scrollContext
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= numPages) {
       setPage(newPage);
-      
-      // Use the ScrollContext's scrollToPage function
-      scrollToPage({ pageNumber: newPage });
       
       if (onPageChange) {
         onPageChange(newPage);
@@ -339,24 +221,21 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     }
   };
 
-  // Update zoom and rotation functions to use TransformContext
+  // Update zoom and rotation functions to work without TransformContext
   const handleZoomIn = useCallback(() => {
     const newScale = parseFloat((scale * 1.2).toFixed(1));
     setScale(newScale);
-    setContextScale(newScale);
-  }, [scale, setContextScale]);
+  }, [scale]);
 
   const handleZoomOut = useCallback(() => {
     const newScale = parseFloat((scale / 1.2).toFixed(1));
     setScale(newScale);
-    setContextScale(newScale);
-  }, [scale, setContextScale]);
+  }, [scale]);
 
   const handleRotate = useCallback(() => {
     const newRotation = (rotation + 90) % 360;
     setRotation(newRotation);
-    setContextRotation(newRotation);
-  }, [rotation, setContextRotation]);
+  }, [rotation]);
 
   // Manual implementation of fit to width
   const handleFitToWidth = useCallback(() => {
@@ -366,9 +245,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       const pdfWidth = 595; // Standard A4 width in points
       const newScale = containerWidth / pdfWidth;
       setScale(newScale);
-      setContextScale(newScale);
     }
-  }, [containerRef, setContextScale]);
+  }, [containerRef]);
 
   // Handle outline item click
   const handleOutlineItemClick = (item: any) => {
@@ -564,12 +442,10 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const toggleOutlinePanel = () => {
     const newValue = !showOutlinePanel;
     setShowOutlinePanel(newValue);
-    setIsShowingOutline(newValue);
     
     // Close thumbnails if opening outline
     if (newValue) {
       setShowThumbnailsPanel(false);
-      setIsShowingThumbnail(false);
     }
   };
 
@@ -577,12 +453,10 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const toggleThumbnailsPanel = () => {
     const newValue = !showThumbnailsPanel;
     setShowThumbnailsPanel(newValue);
-    setIsShowingThumbnail(newValue);
     
     // Close outline if opening thumbnails
     if (newValue) {
       setShowOutlinePanel(false);
-      setIsShowingOutline(false);
     }
   };
 
@@ -710,7 +584,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       window.open(fileUrl, '_blank');
     } else if (pdfData) {
       // For binary data, create a Blob URL and open it
-      const blob = new Blob([pdfData], { type: 'application/pdf' });
+      const blob = new Blob([new Uint8Array(pdfData)], { type: 'application/pdf' });
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
@@ -733,209 +607,210 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
   // Render the PDF viewer UI
   return (
-    <ContextProvider>
+    <div 
+      className="pdf-viewer-container flex flex-col w-full h-full relative" 
+      ref={containerRef}
+      tabIndex={0}
+    >
       {/* Debug banner */}
       <div style={{ background: '#444', color: '#fff', padding: 6, fontSize: 12, zIndex: 999 }}>
         <b>PDFViewer Debug:</b> rawFileUrl: {String(rawFileUrl)} | fileUrl: {String(fileUrl)} | pdfData: {pdfData ? 'yes' : 'no'} | error: {String(error)}
       </div>
-      <div 
-        className="pdf-viewer-container flex flex-col w-full h-full relative" 
-        ref={containerRef}
-        tabIndex={0}
-      >
-        {/* Toolbar at top */}
-        <div className={cn(
-          "pdf-toolbar-container w-full flex-none",
-          annotationToolbarPosition === 'top' ? 'order-first' : 'order-last'
+      {/* Toolbar at top */}
+      <div className={cn(
+        "pdf-toolbar-container w-full flex-none",
+        annotationToolbarPosition === 'top' ? 'order-first' : 'order-last'
+      )}>
+        <PDFToolbar
+          currentPage={page}
+          totalPages={numPages}
+          onPrevPage={() => handlePageChange(Math.max(1, page - 1))}
+          onNextPage={() => handlePageChange(Math.min(numPages, page + 1))}
+          onPageChange={handlePageChange}
+          zoomLevel={scale}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onRotate={handleRotate}
+          data-toggle-outline="true"
+          data-toggle-thumbnails="true"
+          onDownload={() => {/* Download functionality */}}
+          onPrint={() => {/* Print functionality */}}
+          data-show-search={showSearchBar ? 'true' : 'false'}
+          data-active-annotation-tool={activeAnnotationTool}
+          data-has-auto-annotations={hasAutoAnnotations ? 'true' : 'false'}
+          onShowShortcuts={() => setShowShortcutsDialog(true)}
+          onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+            // Handle toggle events by checking data attributes and event target
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-toggle-outline]')) {
+              toggleOutlinePanel();
+            } else if (target.closest('[data-toggle-thumbnails]')) {
+              toggleThumbnailsPanel();
+            }
+          }}
+        />
+      </div>
+      
+      {/* Main content area with sidebar and PDF */}
+      <div className="flex-1 flex overflow-hidden w-full h-full">
+        {/* Side panels for outline and thumbnails */}
+        <aside className={cn(
+          "pdf-sidebar-container flex-none transition-all duration-200 ease-in-out",
+          (showOutlinePanel || showThumbnailsPanel) ? "w-72" : "w-0"
         )}>
-          <PDFToolbar
-            currentPage={page}
-            totalPages={numPages}
-            onPrevPage={() => handlePageChange(Math.max(1, page - 1))}
-            onNextPage={() => handlePageChange(Math.min(numPages, page + 1))}
-            onPageChange={handlePageChange}
-            zoomLevel={scale}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onRotate={handleRotate}
-            data-toggle-outline="true"
-            data-toggle-thumbnails="true"
-            onDownload={() => {/* Download functionality */}}
-            onPrint={() => {/* Print functionality */}}
-            data-show-search={showSearchBar ? 'true' : 'false'}
-            data-active-annotation-tool={activeAnnotationTool}
-            data-has-auto-annotations={hasAutoAnnotations ? 'true' : 'false'}
-            onShowShortcuts={() => setShowShortcutsDialog(true)}
-            onClick={(e: React.MouseEvent<HTMLDivElement>) => {
-              // Handle toggle events by checking data attributes and event target
-              const target = e.target as HTMLElement;
-              if (target.closest('[data-toggle-outline]')) {
-                toggleOutlinePanel();
-              } else if (target.closest('[data-toggle-thumbnails]')) {
-                toggleThumbnailsPanel();
-              }
-            }}
-          />
-        </div>
-        
-        {/* Main content area with sidebar and PDF */}
-        <div className="flex-1 flex overflow-hidden w-full h-full">
-          {/* Side panels for outline and thumbnails */}
-          <aside className={cn(
-            "pdf-sidebar-container flex-none transition-all duration-200 ease-in-out",
-            (showOutlinePanel || showThumbnailsPanel) ? "w-72" : "w-0"
-          )}>
-            {/* Outline panel */}
-            {showOutlinePanel && (
-              <div className="h-full overflow-auto">
-                <div className="p-4 flex items-center justify-between">
-                  <h3 className="font-medium">Document Outline</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7" 
-                    onClick={() => setShowOutlinePanel(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="px-2">
-                  {outline && outline.length > 0 ? (
-                    <PDFOutline
-                      outline={outline}
-                      onItemClick={handleOutlineItemClick}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground p-4">
-                      No outline available for this document.
-                    </p>
-                  )}
-                </div>
+          {/* Outline panel */}
+          {showOutlinePanel && (
+            <div className="h-full overflow-auto">
+              <div className="p-4 flex items-center justify-between">
+                <h3 className="font-medium">Document Outline</h3>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7" 
+                  onClick={() => setShowOutlinePanel(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-            )}
-            
-            {/* Thumbnails panel */}
-            {showThumbnailsPanel && (
-              <div className="h-full overflow-auto">
-                <div className="p-4 flex items-center justify-between">
-                  <h3 className="font-medium">Page Thumbnails</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7" 
-                    onClick={() => setShowThumbnailsPanel(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="p-2">
-                  <PDFThumbnails
-                    currentPage={page}
-                    numPages={numPages}
-                    onPageChange={handlePageChange}
-                    fileUrl={fileUrl}
+              <div className="px-2">
+                {outline && outline.length > 0 ? (
+                  <PDFOutline
+                    outline={outline}
+                    onItemClick={handleOutlineItemClick}
                   />
-                </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground p-4">
+                    No outline available for this document.
+                  </p>
+                )}
               </div>
-            )}
-          </aside>
+            </div>
+          )}
           
-          {/* PDF content area */}
-          <main className={cn(
-            "pdf-content-container flex-1 overflow-auto",
-            activeAnnotationTool && "cursor-crosshair"
-          )}>
-            {error ? (
-              <div className="flex h-full w-full items-center justify-center p-8">
-                <div className="max-w-md p-8 bg-destructive/10 rounded-lg shadow">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
-                  <h3 className="text-xl font-medium text-center mb-2">Error Loading Document</h3>
-                  <p className="text-center">{error}</p>
-                  <div className="flex justify-center mt-4">
-                    <Button onClick={() => window.location.reload()}>Reload</Button>
-                  </div>
+          {/* Thumbnails panel */}
+          {showThumbnailsPanel && (
+            <div className="h-full overflow-auto">
+              <div className="p-4 flex items-center justify-between">
+                <h3 className="font-medium">Page Thumbnails</h3>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7" 
+                  onClick={() => setShowThumbnailsPanel(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="p-2">
+                <PDFThumbnails
+                  currentPage={page}
+                  numPages={numPages}
+                  onPageChange={handlePageChange}
+                  fileUrl={fileUrl}
+                />
+              </div>
+            </div>
+          )}
+        </aside>
+        
+        {/* PDF content area */}
+        <main className={cn(
+          "pdf-content-container flex-1 overflow-auto",
+          activeAnnotationTool && "cursor-crosshair"
+        )}>
+          {error ? (
+            <div className="flex h-full w-full items-center justify-center p-8">
+              <div className="max-w-md p-8 bg-destructive/10 rounded-lg shadow">
+                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
+                <h3 className="text-xl font-medium text-center mb-2">Error Loading Document</h3>
+                <p className="text-center">{error}</p>
+                <div className="flex justify-center mt-4">
+                  <Button onClick={() => window.location.reload()}>Reload</Button>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Show annotation mode indicator when an annotation tool is active */}
-                {activeAnnotationTool && renderAnnotationModeIndicator()}
-                
-                {/* Main PDF component */}
+            </div>
+          ) : (
+            <>
+              {/* Show annotation mode indicator when an annotation tool is active */}
+              {activeAnnotationTool && renderAnnotationModeIndicator()}
+              
+              {/* Main PDF component with ContextProvider */}
+              <ContextProvider>
                 <div className="flex-1 w-full">
                   <PDFComponents
-                    fileUrl={typeof fileUrl === 'string' ? fileUrl : undefined}
+                    fileUrl={fileUrl}
                     pdfData={pdfData}
                     currentPage={page}
                     scale={scale}
                     rotation={rotation}
                     onDocumentLoadSuccess={handleDocumentLoadSuccess}
                     onDocumentLoadError={handleDocumentLoadError}
+                    onPageChange={handlePageChange}
                     annotations={annotations}
                     activeAnnotationTool={activeAnnotationTool}
                     onTextSelection={handleTextSelection}
                     onAnnotationSelected={handleAnnotationSelected}
                   />
                 </div>
-              </>
-            )}
-          </main>
-        </div>
-        
-        {/* Search results panel */}
-        {searchResults.length > 0 && (
-          <div className="search-results-panel absolute right-4 top-[72px] w-80 max-h-96 overflow-auto bg-white shadow-lg rounded-md border border-border z-10">
-            <div className="p-4 border-b">
-              <h3 className="font-medium">Search Results</h3>
-              <p className="text-sm text-muted-foreground">Found {searchResults.length} results</p>
-            </div>
-            <ul className="py-2">
-              {searchResults.map((result, index) => (
-                <li key={`search-result-${index}`} className="px-4 py-2 hover:bg-muted cursor-pointer" onClick={() => handleSearchResultClick(result.pageNumber)}>
-                  <div className="flex items-center">
-                    <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded-md mr-2">Page {result.pageNumber}</span>
-                    <span className="text-sm flex-1">{result.text}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        
-        {/* Keyboard shortcuts dialog */}
-        <Dialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center">
-                <Keyboard className="mr-2 h-5 w-5" />
-                Keyboard Shortcuts
-              </DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-2">
-              {[
-                { key: 'Left Arrow / Page Up', action: 'Previous page' },
-                { key: 'Right Arrow / Page Down', action: 'Next page' },
-                { key: 'Home', action: 'Go to first page' },
-                { key: 'End', action: 'Go to last page' },
-                { key: '+ / =', action: 'Zoom in' },
-                { key: '- / _', action: 'Zoom out' },
-                { key: 'r', action: 'Rotate document' },
-                { key: 'f', action: 'Fit to width' },
-                { key: 'o', action: 'Toggle outline' },
-                { key: 't', action: 'Toggle thumbnails' },
-                { key: 'h', action: 'Toggle highlighter tool' },
-                { key: 'Esc', action: 'Clear active tool' }
-              ].map((shortcut, i) => (
-                <div key={`shortcut-${i}`} className="flex justify-between">
-                  <code className="bg-muted px-2 py-1 rounded text-sm">{shortcut.key}</code>
-                  <span className="text-sm">{shortcut.action}</span>
-                </div>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
+              </ContextProvider>
+            </>
+          )}
+        </main>
       </div>
-    </ContextProvider>
+      
+      {/* Search results panel */}
+      {searchResults.length > 0 && (
+        <div className="search-results-panel absolute right-4 top-[72px] w-80 max-h-96 overflow-auto bg-white shadow-lg rounded-md border border-border z-10">
+          <div className="p-4 border-b">
+            <h3 className="font-medium">Search Results</h3>
+            <p className="text-sm text-muted-foreground">Found {searchResults.length} results</p>
+          </div>
+          <ul className="py-2">
+            {searchResults.map((result, index) => (
+              <li key={`search-result-${index}`} className="px-4 py-2 hover:bg-muted cursor-pointer" onClick={() => handleSearchResultClick(result.pageNumber)}>
+                <div className="flex items-center">
+                  <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded-md mr-2">Page {result.pageNumber}</span>
+                  <span className="text-sm flex-1">{result.text}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {/* Keyboard shortcuts dialog */}
+      <Dialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Keyboard className="mr-2 h-5 w-5" />
+              Keyboard Shortcuts
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            {[
+              { key: 'Left Arrow / Page Up', action: 'Previous page' },
+              { key: 'Right Arrow / Page Down', action: 'Next page' },
+              { key: 'Home', action: 'Go to first page' },
+              { key: 'End', action: 'Go to last page' },
+              { key: '+ / =', action: 'Zoom in' },
+              { key: '- / _', action: 'Zoom out' },
+              { key: 'r', action: 'Rotate document' },
+              { key: 'f', action: 'Fit to width' },
+              { key: 'o', action: 'Toggle outline' },
+              { key: 't', action: 'Toggle thumbnails' },
+              { key: 'h', action: 'Toggle highlighter tool' },
+              { key: 'Esc', action: 'Clear active tool' }
+            ].map((shortcut, i) => (
+              <div key={`shortcut-${i}`} className="flex justify-between">
+                <code className="bg-muted px-2 py-1 rounded text-sm">{shortcut.key}</code>
+                <span className="text-sm">{shortcut.action}</span>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

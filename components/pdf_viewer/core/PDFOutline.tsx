@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Outline, OutlineItem } from 'davidkric-pdf-components';
+import { Outline, OutlineItem } from '@davidkric/pdf-components';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 

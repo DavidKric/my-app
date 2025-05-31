@@ -32,30 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* We no longer need the PDF worker script since we're managing the worker in pdf-setup.ts */}
-        <Script 
-          id="sw-cleanup"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Clean up any existing PDF service workers
-              if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(registrations => {
-                  for (let registration of registrations) {
-                    if (registration.scope.includes('pdf') || 
-                        (registration.active && registration.active.scriptURL && 
-                         (registration.active.scriptURL.includes('pdf-worker-sw.js') || 
-                          registration.active.scriptURL.includes('register-pdf-worker.js')))) {
-                      registration.unregister().then(() => {
-                        console.log('PDF service worker unregistered');
-                      });
-                    }
-                  }
-                });
-              }
-            `
-          }}
-        />
+        {/* No PDF worker interference - let the library handle its own workers */}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

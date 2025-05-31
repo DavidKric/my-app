@@ -15,7 +15,8 @@ import {
   Overlay,
   computeBoundingBoxStyle,
   ContextProvider
-} from 'davidkric-pdf-components';
+} from '@davidkric/pdf-components';
+import '@davidkric/pdf-components/dist/style.css';
 
 import { AnnotationOverlay, Annotation, AnnotationType } from '../annotations/AnnotationOverlay';
 import PDFErrorBoundary from './PDFErrorBoundary';
@@ -94,16 +95,16 @@ export default function PDFComponents({
   const transformContext = useContext(TransformContext);
   
   // State
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [numPages, setNumPages] = useState(0);
   
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefsMap = useRef<Map<number, HTMLDivElement | null>>(new Map());
   
-  // Get values from contexts
+  // Get values from contexts - this is how the library provides document state
   const { 
+    numPages: contextNumPages = 0,
+    outline: contextOutline = [],
     setNumPages: setDocNumPages, 
     setOutline: setDocOutline, 
     setPdfDocProxy
@@ -115,7 +116,7 @@ export default function PDFComponents({
   } = scrollContext || {};
   
   const { 
-    isLoading: uiIsLoading, 
+    isLoading: contextIsLoading = true, 
     setIsLoading: setUiIsLoading,
     setErrorMessage
   } = uiContext || {};
@@ -135,44 +136,25 @@ export default function PDFComponents({
     }
   }, []);
 
-  // Handle document load success
-  const handleLoadSuccess = useCallback((pdfDoc: any) => {
-    console.log(`[PDF] Document loaded successfully with ${pdfDoc.numPages} pages`);
-    const numPages = pdfDoc.numPages || 0;
-    const outline = pdfDoc.outline || [];
-    
-    // Set local state
-    setNumPages(numPages);
-    setLoading(false);
-    setError(null);
-    
-    // Update context state if available
-    if (setDocNumPages) setDocNumPages(numPages);
-    if (setDocOutline) setDocOutline(outline);
-    if (setPdfDocProxy) setPdfDocProxy(pdfDoc);
-    
-    // Notify parent
-    if (onDocumentLoadSuccess) {
+  // Watch context state changes and notify parent when document loads
+  useEffect(() => {
+    // When the context indicates the document has loaded (numPages > 0 and not loading)
+    if (contextNumPages > 0 && !contextIsLoading && onDocumentLoadSuccess) {
+      console.log(`[PDF] Document loaded via context with ${contextNumPages} pages`);
       onDocumentLoadSuccess({ 
-        numPages: numPages, 
-        outline: outline 
+        numPages: contextNumPages, 
+        outline: contextOutline || [] 
       });
     }
-  }, [onDocumentLoadSuccess, setDocNumPages, setDocOutline, setPdfDocProxy]);
+  }, [contextNumPages, contextIsLoading, contextOutline, onDocumentLoadSuccess]);
 
-  // Handle document load error
-  const handleLoadError = useCallback((err: Error) => {
-    console.error('[PDF] Error loading document:', err.message);
-    setError(`Failed to load PDF: ${err.message}`);
-    setLoading(false);
-    
-    // Update context state if available
-    if (setErrorMessage) setErrorMessage(err.message);
-    
-    if (onDocumentLoadError) {
-      onDocumentLoadError(err);
+  // Handle errors from context
+  useEffect(() => {
+    // If there's an error and we have an error handler
+    if (error && onDocumentLoadError) {
+      onDocumentLoadError(new Error(error));
     }
-  }, [setErrorMessage, onDocumentLoadError]);
+  }, [error, onDocumentLoadError]);
 
   // Determine what to pass as the file prop
   const fileSource = useMemo(() => {
@@ -183,6 +165,14 @@ export default function PDFComponents({
       setError('No valid PDF source provided');
       return undefined;
     }
+    
+    // TEMPORARY TEST: For arXiv papers, try direct URL first to test if library works
+    if (normalizedFileUrl.includes('arxiv.org')) {
+      const directUrl = 'https://arxiv.org/pdf/2404.16130';
+      console.log('[PDF] TESTING: Using direct arXiv URL instead of proxy:', directUrl);
+      return directUrl;
+    }
+    
     // Always pass a string URL for remote/proxy PDFs
     return normalizedFileUrl;
   }, [pdfData, normalizedFileUrl]);
@@ -290,7 +280,7 @@ export default function PDFComponents({
   }, [fileUrl, fileSource, error]);
 
   // Show loading indicator while loading
-  if (loading) {
+  if (contextIsLoading) {
     return <LoadingIndicator />;
   }
 
@@ -326,7 +316,7 @@ export default function PDFComponents({
 
   // Main PDF viewer using AllenAI components
   return (
-    <ContextProvider>
+    <>
       {/* Debug banner */}
       <div style={{ background: '#666', color: '#fff', padding: 4, fontSize: 12, zIndex: 998 }}>
         <b>PDFComponents Debug:</b> fileUrl: {String(fileUrl)} | fileSource: {typeof fileSource === 'string' ? fileSource : (fileSource && fileSource.data ? '[binary data]' : String(fileSource))} | error: {String(error)}
@@ -339,8 +329,8 @@ export default function PDFComponents({
         {process.env.NODE_ENV === 'development' && (
           <div className="fixed top-2 right-2 bg-black/80 text-white p-2 rounded text-xs z-50 max-w-xs overflow-hidden">
             <div>URL: {normalizedFileUrl?.substring(0, 30)}...</div>
-            <div>Pages: {numPages}, Current: {currentPage}</div>
-            <div>Loading: {loading ? 'Yes' : 'No'}</div>
+            <div>Pages: {contextNumPages}, Current: {currentPage}</div>
+            <div>Loading: {contextIsLoading ? 'Yes' : 'No'}</div>
             <div>Error: {error ? 'Yes' : 'No'}</div>
           </div>
         )}
@@ -348,15 +338,10 @@ export default function PDFComponents({
         {/* Main PDF Document component using AllenAI's DocumentWrapper */}
         <DocumentWrapper 
           file={fileSource}
-          renderType={RENDER_TYPE.SINGLE_CANVAS}
+          renderType={RENDER_TYPE.MULTI_CANVAS}
           className={error ? "hidden" : ""}
-          error={(err) => (
-            <div style={{ color: 'red', padding: 16 }}>
-              <b>PDF Load Error:</b> {err?.message || String(err)}
-            </div>
-          )}
         >
-          {Array.from(new Array(numPages || 0), (_, index) => {
+          {Array.from(new Array(contextNumPages || 0), (_, index) => {
             const pageNumber = index + 1;
             
             // Check if we should render this page (for performance)
@@ -382,7 +367,7 @@ export default function PDFComponents({
                       <PageWrapper
                         key={`page_${pageNumber}`}
                         pageIndex={pageNumber - 1} // PageWrapper uses 0-indexed pages
-                        renderType={RENDER_TYPE.SINGLE_CANVAS}
+                        renderType={RENDER_TYPE.MULTI_CANVAS}
                         className={`bg-white shadow-md ${rotation ? `rotate-${rotation}` : ''}`}
                       />
                       
@@ -413,6 +398,6 @@ export default function PDFComponents({
           })}
         </DocumentWrapper>
       </div>
-    </ContextProvider>
+    </>
   );
 } 

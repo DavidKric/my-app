@@ -13,7 +13,7 @@ import {
   PenTool,
   ExternalLink
 } from 'lucide-react';
-import { BoundingBox as AllenBoundingBox, computeBoundingBoxStyle, Overlay as AllenOverlay } from 'davidkric-pdf-components';
+import { BoundingBox as AllenBoundingBox, computeBoundingBoxStyle, Overlay as AllenOverlay } from '@davidkric/pdf-components';
 
 // Enhanced Annotation type enum with more specific types
 export enum AnnotationType {
