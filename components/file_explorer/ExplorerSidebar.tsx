@@ -2,15 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import clsx from 'clsx';
 import { Case, FileNode, FolderNode } from '@/types/file_explorer/file-structure';
 import CaseSwitcher from '@/components/file_explorer/CaseSwitcher';
 import SearchBar from './SearchBar';
 import FileTree from './FileTree';
 import SearchResults from './SearchResults';
-
-// Import icons from lucide-react
-import { Pin, PinOff, Folder, Search, Clock } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRecentFiles } from '@/lib/useRecentFiles';
 
@@ -26,8 +23,6 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
   const [activeProjectId, setActiveProjectId] = useState(cases[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileNode[]>([]);
-  const [pinned, setPinned] = useState(true); // Default to pinned for better usability
-  const [hovered, setHovered] = useState(false);
   const [activePanel, setActivePanel] = useState<Panel>('explorer');
   const [activeFileId, setActiveFileId] = useState('');
   const { recentFiles, clearFiles, addFile } = useRecentFiles();
@@ -56,7 +51,7 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
     setSearchResults(results);
   };
 
-  // Original file explorer content
+  // File explorer content
   const fileExplorerContent = (
     <div className="h-full flex flex-col">
       {/* Project Switcher */}
@@ -84,6 +79,10 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
             activeFileId={activeFileId}
             onFileSelect={(file) => {
               setActiveFileId(file.id);
+              addFile(file);
+              if (file.fileType === 'pdf') {
+                router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}`);
+              }
             }}
           />
         )}
@@ -91,11 +90,10 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
     </div>
   );
 
-  // Search Panel content (a separate panel)
+  // Search Panel content
   const searchPanelContent = (
     <div className="h-full flex flex-col p-2">
       <div className="mb-2 text-lg font-semibold">Search</div>
-      {/* You can reuse SearchBar here or create a dedicated one */}
       <SearchBar
         query={searchQuery}
         onChange={setSearchQuery}
@@ -107,7 +105,7 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
     </div>
   );
 
-  // History Panel content (a separate panel)
+  // History Panel content
   const historyPanelContent = (
     <div className="h-full flex flex-col p-2 space-y-2">
       <div className="flex items-center justify-between">
@@ -143,7 +141,7 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
   );
 
   // Determine which panel content to render
-  const renderActivePanel = () => {
+  const renderContent = () => {
     switch (activePanel) {
       case 'explorer':
         return fileExplorerContent;
@@ -152,79 +150,51 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
       case 'history':
         return historyPanelContent;
       default:
-        return null;
+        return fileExplorerContent;
     }
   };
 
-  // Now we always render the expanded view
+  // Simple navigation tabs at the top
   return (
-    <div className="flex h-full">
-      {/* Icon Bar - always visible */}
-      <div className="flex flex-col items-center bg-secondary/70 text-secondary-foreground h-full space-y-6 py-4 min-w-[3rem]">
-        {/* Pin/Unpin button */}
+    <div className="h-full flex flex-col">
+      {/* Simple tab navigation */}
+      <div className="flex border-b border-border">
         <button
-          className="p-2 hover:bg-accent rounded"
-          onClick={() => setPinned((prev) => !prev)}
-          aria-label={pinned ? 'Unpin sidebar' : 'Pin sidebar'}
-        >
-          {pinned ? <PinOff size={18} /> : <Pin size={18} />}
-        </button>
-        
-        {/* Explorer Icon */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={clsx(
-            'h-10 w-10 rounded-full',
-            activePanel === 'explorer' ? 'bg-blue-50 text-blue-600' : 'hover:bg-accent'
-          )}
           onClick={() => setActivePanel('explorer')}
-          aria-label="File Explorer"
+          className={`flex-1 p-2 text-sm font-medium transition-colors ${
+            activePanel === 'explorer' 
+              ? 'text-primary border-b-2 border-primary bg-primary/5' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
         >
-          <Folder size={18} />
-        </Button>
-        
-        {/* Search Icon */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={clsx(
-            'h-10 w-10 rounded-full',
-            activePanel === 'search' ? 'bg-green-50 text-green-600' : 'hover:bg-accent'
-          )}
+          Files
+        </button>
+        <button
           onClick={() => setActivePanel('search')}
-          aria-label="Search"
+          className={`flex-1 p-2 text-sm font-medium transition-colors ${
+            activePanel === 'search' 
+              ? 'text-primary border-b-2 border-primary bg-primary/5' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
         >
-          <Search size={18} />
-        </Button>
-        
-        {/* History Icon */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={clsx(
-            'h-10 w-10 rounded-full',
-            activePanel === 'history' ? 'bg-purple-50 text-purple-600' : 'hover:bg-accent'
-          )}
+          Search
+        </button>
+        <button
           onClick={() => setActivePanel('history')}
-          aria-label="History"
+          className={`flex-1 p-2 text-sm font-medium transition-colors ${
+            activePanel === 'history' 
+              ? 'text-primary border-b-2 border-primary bg-primary/5' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
         >
-          <Clock size={18} />
-        </Button>
+          History
+        </button>
       </div>
-
-      {/* Content Area */}
-      {pinned ? (
-        // Fixed panel when pinned
-        <div className="flex-1 h-full overflow-hidden border-l border-border">
-          {renderActivePanel()}
-        </div>
-      ) : hovered ? (
-        // Hover overlay when not pinned
-        <div className="absolute left-12 top-0 w-64 h-full bg-background border-r border-border shadow-lg z-50">
-          {renderActivePanel()}
-        </div>
-      ) : null}
+      
+      {/* Content area */}
+      <div className="flex-1 overflow-hidden">
+        {renderContent()}
+      </div>
     </div>
   );
 }

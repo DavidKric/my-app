@@ -39,24 +39,10 @@ import { Tooltip } from '@/components/ui/tooltip';
 import PDFErrorBoundary from './PDFErrorBoundary';
 import scrollService, { ScrollPosition } from '@/lib/scroll-service';
 import {
-  DEFAULT_ZOOM_SCALE,
   RENDER_TYPE,
-  ZoomInButton, 
-  ZoomOutButton,
-  PageNumberControl,
-  PercentFormatter,
-  BoundingBox,
-  DownloadButton,
-  TransformContext,
-  ScrollContext,
-  UiContext,
   DocumentContext,
-  ContextProvider,
-  rotateClockwise as libraryRotateClockwise,
-  rotateCounterClockwise as libraryRotateCounterClockwise,
-  scrollToPdfPageIndex,
-  PrintButton,
-  Outline
+  TransformContext,
+  ContextProvider
 } from '@davidkric/pdf-components';
 import {
   Dialog,
@@ -67,8 +53,6 @@ import {
 } from "@/components/ui/dialog";
 
 // Import Toolbar components
-import Toolbar from '../controls/Toolbar';
-// Cast PDFToolbar as any to bypass type checking
 import { PDFToolbar as PDFToolbarComponent } from '../controls/EnhancedPDFToolbar';
 const PDFToolbar = PDFToolbarComponent as any;
 
@@ -109,7 +93,8 @@ interface PDFViewerProps {
   autoScrollToPage?: boolean;
 }
 
-const PDFViewer: React.FC<PDFViewerProps> = ({
+// PDF Viewer Inner Component - this will be wrapped by ContextProvider
+const PDFViewerInner: React.FC<PDFViewerProps> = ({
   fileUrl: rawFileUrl,
   pdfData,
   currentPage = 1,
@@ -127,10 +112,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   onDocumentLoaded,
   autoScrollToPage
 }) => {
+  // Now we can access the library context!
+  const { numPages, outline } = useContext(DocumentContext);
+  const { scale } = useContext(TransformContext);
+
   // Process file URL to ensure it works correctly
   const fileUrl = useMemo(() => {
     if (!rawFileUrl) {
-      // If we have PDF data, we don't need a URL
       if (pdfData) {
         console.log('Using provided binary PDF data instead of URL');
         return null;
@@ -140,15 +128,11 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     }
     
     console.log('Processing raw file URL:', rawFileUrl);
-    
-    // Just return the processed URL as-is
     return rawFileUrl;
   }, [rawFileUrl, pdfData]);
 
-  // Keep some local state for compatibility and UI-specific features
+  // State for PDF document and navigation
   const [page, setPage] = useState<number>(currentPage);
-  const [numPages, setNumPages] = useState<number>(0);
-  const [outline, setOutline] = useState<any[]>([]);
   const [activeAnnotationTool, setActiveAnnotationTool] = useState<AnnotationType | null>(null);
   const [searchInput, setSearchInput] = useState<string>('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -159,17 +143,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const [showOutlinePanel, setShowOutlinePanel] = useState<boolean>(false);
   const [showThumbnailsPanel, setShowThumbnailsPanel] = useState<boolean>(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState<boolean>(false);
-  
-  // Keep local state for scale and rotation
-  const [scale, setScale] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  
-  // Sync the internal and external active annotation tool
-  useEffect(() => {
-    if (externalActiveAnnotationTool !== undefined) {
-      setActiveAnnotationTool(externalActiveAnnotationTool);
-    }
-  }, [externalActiveAnnotationTool]);
 
   // Update internal page when prop changes
   useEffect(() => {
@@ -190,63 +163,33 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     }
   }, [annotations]);
 
-  // Update handleDocumentLoadSuccess to work without context
-  const handleDocumentLoadSuccess = ({ numPages, outline }: { numPages: number, outline?: any[] }) => {
-    // Update local state only
-    setNumPages(numPages);
-    
-    if (outline) {
-      setOutline(outline);
+  // Call external handler when library loads document
+  useEffect(() => {
+    if (numPages > 0 && onDocumentLoaded) {
+      onDocumentLoaded(numPages, outline || undefined);
     }
-    
-    // Auto-fit to width on initial load
-    handleFitToWidth();
+  }, [numPages, outline, onDocumentLoaded]);
+
+  const handleDocumentLoadSuccess = ({ numPages, outline }: { numPages: number, outline?: any[] }) => {
+    console.log('Document loaded successfully with', numPages, 'pages');
+    // The library context will handle this automatically now
   };
 
-  // Update handleDocumentLoadError to work without context
   const handleDocumentLoadError = (err: Error) => {
     console.error('Error loading PDF document:', err);
     const errorMessage = `Failed to load the PDF document: ${err.message}`;
     setError(errorMessage);
   };
 
-  // Update handlePageChange to work without scrollContext
+  // Page navigation
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= numPages) {
       setPage(newPage);
-      
       if (onPageChange) {
         onPageChange(newPage);
       }
     }
   };
-
-  // Update zoom and rotation functions to work without TransformContext
-  const handleZoomIn = useCallback(() => {
-    const newScale = parseFloat((scale * 1.2).toFixed(1));
-    setScale(newScale);
-  }, [scale]);
-
-  const handleZoomOut = useCallback(() => {
-    const newScale = parseFloat((scale / 1.2).toFixed(1));
-    setScale(newScale);
-  }, [scale]);
-
-  const handleRotate = useCallback(() => {
-    const newRotation = (rotation + 90) % 360;
-    setRotation(newRotation);
-  }, [rotation]);
-
-  // Manual implementation of fit to width
-  const handleFitToWidth = useCallback(() => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth - 40; // Subtract padding
-      // Use standard A4 width for calculation
-      const pdfWidth = 595; // Standard A4 width in points
-      const newScale = containerWidth / pdfWidth;
-      setScale(newScale);
-    }
-  }, [containerRef]);
 
   // Handle outline item click
   const handleOutlineItemClick = (item: any) => {
@@ -255,12 +198,11 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     }
   };
 
+  // Search functionality
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchInput.trim()) return;
     
-    // Here you would implement actual search functionality
-    // For now, let's simulate it
     console.log('Searching for:', searchInput);
     
     // Dummy search results - in a real app, you'd use PDF.js's text search
@@ -274,16 +216,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     handlePageChange(pageNumber);
   };
 
-  // Handle annotation selection
+  // Annotation handling
   const handleAnnotationSelected = (annotation: Annotation) => {
     console.log('Selection annotation in PDF:', annotation.id);
     
-    // Set the page if needed
     if (annotation.pageNumber !== currentPage) {
       handlePageChange(annotation.pageNumber);
     }
     
-    // Find and flash highlight the annotation element
     setTimeout(() => {
       const annotationElement = document.querySelector(`[data-annotation-id="${annotation.id}"]`);
       if (annotationElement) {
@@ -292,16 +232,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           block: 'center'
         });
         
-        // Add a flash highlight
         annotationElement.classList.add('flash-highlight');
         setTimeout(() => {
           annotationElement.classList.remove('flash-highlight');
         }, 2000);
       }
-    }, 300); // Small delay to allow page render
+    }, 300);
   };
 
-  // Text selection handling
   const handleTextSelection = (selectedText: string, boundingRect: any, pageNumber: number) => {
     if (activeAnnotationTool && onCreateAnnotation) {
       onCreateAnnotation({
@@ -314,28 +252,17 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     }
   };
 
-  // Handle jump to annotation
   const handleJumpToAnnotation = (annotation: Annotation) => {
-    // Change to the page where the annotation exists
     if (annotation.pageNumber) {
       handlePageChange(annotation.pageNumber);
-      
-      // You could also implement scrolling to the annotation
-      // This would require tracking rendered annotations' positions
     }
   };
   
-  // Mock function for generating annotations
   const handleGenerateAnnotations = () => {
     console.log('Generating auto annotations...');
-    // In a real implementation, this would trigger an API call
-    // to generate annotations for the document
     
-    // For now, let's create some dummy auto annotations
     if (onCreateAnnotation) {
-      // Simulate an API delay
       setTimeout(() => {
-        // Create some sample auto annotations
         const dummyAnnotations = [
           {
             textSnippet: "This is an important insight about the document content.",
@@ -355,7 +282,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           }
         ];
         
-        // Add the annotations
         dummyAnnotations.forEach(annotation => {
           onCreateAnnotation(annotation);
         });
@@ -365,16 +291,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     }
   };
 
-  // Add right before the return statement
+  // Register scroll service listener
   useEffect(() => {
-    // Register as listener for scroll events
     const scrollListener = (position: ScrollPosition) => {
-      // Handle page changes
       if (position.pageNumber && position.pageNumber !== currentPage) {
         handlePageChange(position.pageNumber);
       }
       
-      // Handle annotation focus
       if (position.annotationId) {
         const annotation = annotations.find(a => a.id === position.annotationId);
         if (annotation) {
@@ -390,6 +313,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     };
   }, [annotations, currentPage, handlePageChange, handleAnnotationSelected]);
 
+  // Annotation mode indicator
   const renderAnnotationModeIndicator = () => {
     if (!activeAnnotationTool) return null;
     
@@ -438,49 +362,39 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     );
   };
 
-  // Update toggleOutlinePanel to use UiContext
+  // Panel toggle functions
   const toggleOutlinePanel = () => {
     const newValue = !showOutlinePanel;
     setShowOutlinePanel(newValue);
-    
-    // Close thumbnails if opening outline
     if (newValue) {
       setShowThumbnailsPanel(false);
     }
   };
 
-  // Update toggleThumbnailsPanel to use UiContext
   const toggleThumbnailsPanel = () => {
     const newValue = !showThumbnailsPanel;
     setShowThumbnailsPanel(newValue);
-    
-    // Close outline if opening thumbnails
     if (newValue) {
       setShowOutlinePanel(false);
     }
   };
 
-  // Inside the PDFViewer component, before the return statement
-  const scaleOptions = [
-    { value: 0.5, label: '50%' },
-    { value: 0.75, label: '75%' },
-    { value: 1.0, label: '100%' },
-    { value: 1.25, label: '125%' },
-    { value: 1.5, label: '150%' },
-    { value: 2.0, label: '200%' }
-  ];
-
-  // Move the toggleAnnotationTool function before the keyboard event handler useEffect
-  // Add this after the handleFitToWidth function and before all keyboard handling
+  // Annotation tool handling
   const toggleAnnotationTool = (tool: AnnotationType | null) => {
     const newToolState = activeAnnotationTool === tool ? null : tool;
     setActiveAnnotationTool(newToolState);
   };
 
-  // Add the keyboard event handlers after the existing useEffect hooks
+  // Sync external annotation tool
+  useEffect(() => {
+    if (externalActiveAnnotationTool !== undefined) {
+      setActiveAnnotationTool(externalActiveAnnotationTool);
+    }
+  }, [externalActiveAnnotationTool]);
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in input fields
       if (e.target instanceof HTMLInputElement || 
           e.target instanceof HTMLTextAreaElement) {
         return;
@@ -499,18 +413,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       } else if (e.key === 'End') {
         e.preventDefault();
         handlePageChange(numPages);
-      }
-      
-      // Zoom shortcuts
-      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
-        e.preventDefault();
-        handleZoomIn();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
-        e.preventDefault();
-        handleZoomOut();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
-        e.preventDefault();
-        handleFitToWidth();
       }
       
       // Annotation tool shortcuts
@@ -533,12 +435,11 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [page, numPages, activeAnnotationTool, handleZoomIn, handleZoomOut, handleFitToWidth, handlePageChange, toggleAnnotationTool]);
+  }, [page, numPages, activeAnnotationTool, handlePageChange, toggleAnnotationTool]);
 
-  // Add toggle state for context panel
+  // Toolbar handlers
   const [isContextPanelVisible, setIsContextPanelVisible] = useState(true);
   
-  // Add handlers for toolbar actions
   const handleToggleContextPanel = useCallback(() => {
     setIsContextPanelVisible(prev => !prev);
   }, []);
@@ -568,9 +469,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
   const handleToolbarSearch = useCallback((searchText: string) => {
     console.log('Searching for:', searchText);
-    // Implement the search functionality here
     setSearchInput(searchText);
-    // Simulate search results
     setSearchResults([
       { pageNumber: Math.ceil(Math.random() * numPages), text: `Found "${searchText}" on this page...` },
       { pageNumber: Math.ceil(Math.random() * numPages), text: `Another match for "${searchText}"...` }
@@ -579,18 +478,15 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
   const handleDownload = useCallback(() => {
     console.log('Downloading PDF');
-    // Implement download with null check
     if (fileUrl) {
       window.open(fileUrl, '_blank');
     } else if (pdfData) {
-      // For binary data, create a Blob URL and open it
       const blob = new Blob([new Uint8Array(pdfData)], { type: 'application/pdf' });
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = 'document.pdf';
       link.click();
-      // Clean up the Blob URL after download
       setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     }
   }, [fileUrl, pdfData]);
@@ -600,25 +496,12 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     window.print();
   }, []);
 
-  // Debug: log state on every render
-  useEffect(() => {
-    console.log('[DEBUG][PDFViewer] rawFileUrl:', rawFileUrl, 'fileUrl:', fileUrl, 'pdfData:', pdfData, 'error:', error);
-  }, [rawFileUrl, fileUrl, pdfData, error]);
-
   // Render the PDF viewer UI
   return (
-    <div 
-      className="pdf-viewer-container flex flex-col w-full h-full relative" 
-      ref={containerRef}
-      tabIndex={0}
-    >
-      {/* Debug banner */}
-      <div style={{ background: '#444', color: '#fff', padding: 6, fontSize: 12, zIndex: 999 }}>
-        <b>PDFViewer Debug:</b> rawFileUrl: {String(rawFileUrl)} | fileUrl: {String(fileUrl)} | pdfData: {pdfData ? 'yes' : 'no'} | error: {String(error)}
-      </div>
-      {/* Toolbar at top */}
+    <div className="pdf-viewer-container fixed inset-0 flex flex-col w-full h-full bg-white">
+      {/* Toolbar at top - fixed positioned */}
       <div className={cn(
-        "pdf-toolbar-container w-full flex-none",
+        "pdf-toolbar-container w-full flex-none bg-white border-b z-50 relative",
         annotationToolbarPosition === 'top' ? 'order-first' : 'order-last'
       )}>
         <PDFToolbar
@@ -627,10 +510,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           onPrevPage={() => handlePageChange(Math.max(1, page - 1))}
           onNextPage={() => handlePageChange(Math.min(numPages, page + 1))}
           onPageChange={handlePageChange}
-          zoomLevel={scale}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onRotate={handleRotate}
           data-toggle-outline="true"
           data-toggle-thumbnails="true"
           onDownload={() => {/* Download functionality */}}
@@ -651,17 +530,65 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
         />
       </div>
       
-      {/* Main content area with sidebar and PDF */}
-      <div className="flex-1 flex overflow-hidden w-full h-full">
-        {/* Side panels for outline and thumbnails */}
-        <aside className={cn(
-          "pdf-sidebar-container flex-none transition-all duration-200 ease-in-out",
+      {/* Main content area - full viewport like Semantic Scholar */}
+      <div className="flex-1 relative w-full h-full overflow-hidden">
+        {/* PDF content area - base layer, full viewport */}
+        <div 
+          className={cn(
+            "absolute inset-0 w-full h-full",
+            activeAnnotationTool && "cursor-crosshair"
+          )}
+          ref={containerRef}
+          tabIndex={0}
+        >
+          {error ? (
+            <div className="flex h-full w-full items-center justify-center p-8">
+              <div className="max-w-md p-8 bg-destructive/10 rounded-lg shadow">
+                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
+                <h3 className="text-xl font-medium text-center mb-2">Error Loading Document</h3>
+                <p className="text-center">{error}</p>
+                <div className="flex justify-center mt-4">
+                  <Button onClick={() => window.location.reload()}>Reload</Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full overflow-auto">
+              {/* Show annotation mode indicator when an annotation tool is active */}
+              {activeAnnotationTool && (
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+                  {renderAnnotationModeIndicator()}
+                </div>
+              )}
+              
+              {/* Main PDF component - full viewport rendering */}
+              <div className="w-full max-w-4xl h-[80vh] overflow-y-auto overflow-x-hidden bg-white rounded shadow border mx-auto">
+                <PDFComponents
+                  fileUrl={fileUrl}
+                  pdfData={pdfData}
+                  currentPage={page}
+                  onDocumentLoadSuccess={handleDocumentLoadSuccess}
+                  onDocumentLoadError={handleDocumentLoadError}
+                  onPageChange={handlePageChange}
+                  annotations={annotations}
+                  activeAnnotationTool={activeAnnotationTool}
+                  onTextSelection={handleTextSelection}
+                  onAnnotationSelected={handleAnnotationSelected}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Side panels - overlaid on top of PDF like Semantic Scholar */}
+        <div className={cn(
+          "absolute top-0 left-0 h-full bg-white border-r shadow-lg transition-all duration-200 ease-in-out z-20",
           (showOutlinePanel || showThumbnailsPanel) ? "w-72" : "w-0"
         )}>
           {/* Outline panel */}
           {showOutlinePanel && (
             <div className="h-full overflow-auto">
-              <div className="p-4 flex items-center justify-between">
+              <div className="p-4 flex items-center justify-between border-b">
                 <h3 className="font-medium">Document Outline</h3>
                 <Button 
                   variant="ghost" 
@@ -690,7 +617,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           {/* Thumbnails panel */}
           {showThumbnailsPanel && (
             <div className="h-full overflow-auto">
-              <div className="p-4 flex items-center justify-between">
+              <div className="p-4 flex items-center justify-between border-b">
                 <h3 className="font-medium">Page Thumbnails</h3>
                 <Button 
                   variant="ghost" 
@@ -711,72 +638,28 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
               </div>
             </div>
           )}
-        </aside>
-        
-        {/* PDF content area */}
-        <main className={cn(
-          "pdf-content-container flex-1 overflow-auto",
-          activeAnnotationTool && "cursor-crosshair"
-        )}>
-          {error ? (
-            <div className="flex h-full w-full items-center justify-center p-8">
-              <div className="max-w-md p-8 bg-destructive/10 rounded-lg shadow">
-                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
-                <h3 className="text-xl font-medium text-center mb-2">Error Loading Document</h3>
-                <p className="text-center">{error}</p>
-                <div className="flex justify-center mt-4">
-                  <Button onClick={() => window.location.reload()}>Reload</Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Show annotation mode indicator when an annotation tool is active */}
-              {activeAnnotationTool && renderAnnotationModeIndicator()}
-              
-              {/* Main PDF component with ContextProvider */}
-              <ContextProvider>
-                <div className="flex-1 w-full">
-                  <PDFComponents
-                    fileUrl={fileUrl}
-                    pdfData={pdfData}
-                    currentPage={page}
-                    scale={scale}
-                    rotation={rotation}
-                    onDocumentLoadSuccess={handleDocumentLoadSuccess}
-                    onDocumentLoadError={handleDocumentLoadError}
-                    onPageChange={handlePageChange}
-                    annotations={annotations}
-                    activeAnnotationTool={activeAnnotationTool}
-                    onTextSelection={handleTextSelection}
-                    onAnnotationSelected={handleAnnotationSelected}
-                  />
-                </div>
-              </ContextProvider>
-            </>
-          )}
-        </main>
-      </div>
-      
-      {/* Search results panel */}
-      {searchResults.length > 0 && (
-        <div className="search-results-panel absolute right-4 top-[72px] w-80 max-h-96 overflow-auto bg-white shadow-lg rounded-md border border-border z-10">
-          <div className="p-4 border-b">
-            <h3 className="font-medium">Search Results</h3>
-            <p className="text-sm text-muted-foreground">Found {searchResults.length} results</p>
-          </div>
-          <ul className="py-2">
-            {searchResults.map((result, index) => (
-              <li key={`search-result-${index}`} className="px-4 py-2 hover:bg-muted cursor-pointer" onClick={() => handleSearchResultClick(result.pageNumber)}>
-                <div className="flex items-center">
-                  <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded-md mr-2">Page {result.pageNumber}</span>
-                  <span className="text-sm flex-1">{result.text}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
         </div>
-      )}
+        
+        {/* Search results panel - overlaid on top right like Semantic Scholar */}
+        {searchResults.length > 0 && (
+          <div className="absolute right-4 top-4 w-80 max-h-96 overflow-auto bg-white shadow-lg rounded-md border border-border z-30">
+            <div className="p-4 border-b">
+              <h3 className="font-medium">Search Results</h3>
+              <p className="text-sm text-muted-foreground">Found {searchResults.length} results</p>
+            </div>
+            <ul className="py-2">
+              {searchResults.map((result, index) => (
+                <li key={`search-result-${index}`} className="px-4 py-2 hover:bg-muted cursor-pointer" onClick={() => handleSearchResultClick(result.pageNumber)}>
+                  <div className="flex items-center">
+                    <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded-md mr-2">Page {result.pageNumber}</span>
+                    <span className="text-sm flex-1">{result.text}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
       
       {/* Keyboard shortcuts dialog */}
       <Dialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog}>
@@ -811,6 +694,15 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
         </DialogContent>
       </Dialog>
     </div>
+  );
+};
+
+// Main PDFViewer component - wraps everything in ContextProvider
+const PDFViewer: React.FC<PDFViewerProps> = (props) => {
+  return (
+    <ContextProvider>
+      <PDFViewerInner {...props} />
+    </ContextProvider>
   );
 };
 

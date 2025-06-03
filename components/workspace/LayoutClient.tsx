@@ -5,7 +5,7 @@ import { Case } from '@/types/file_explorer/file-structure';
 import ExplorerSidebar from '@/components/file_explorer/ExplorerSidebar';
 import ContextSidebar from '@/components/context_panel/ContextSidebar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FloatingActionButtons } from '@/components/pdf_viewer/utils/FloatingActionButtons';
 import { cn } from '@/lib/utils';
@@ -27,20 +27,20 @@ const sidebarVariants = {
       damping: 30,
     },
   }),
-  collapsed: {
-    width: 0,
-    opacity: 0,
+  collapsed: (width: number) => ({
+    width,
+    opacity: width === 0 ? 0 : 1, // Hide completely when width is 0
     transition: {
       type: "spring",
       stiffness: 300,
       damping: 30,
     },
-  },
+  }),
 };
 
 export function LayoutClient({ children, cases }: LayoutClientProps) {
-  const [isLeftExpanded, setIsLeftExpanded] = useState(true);
-  const [isRightExpanded, setIsRightExpanded] = useState(true);
+  const [isLeftExpanded, setIsLeftExpanded] = useState(false);
+  const [isRightExpanded, setIsRightExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState('annotations');
   
   // Handler functions for sidebar interactions
@@ -70,59 +70,54 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
   
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Left Sidebar: File Explorer */}
-      <AnimatePresence mode="wait">
-        {isLeftExpanded && (
-          <motion.div
-            id="file-explorer-sidebar"
-            variants={sidebarVariants}
-            initial="collapsed"
-            animate="expanded"
-            exit="collapsed"
-            custom={320}
-            className="relative h-full border-r border-border bg-background/95 backdrop-blur-sm z-10 shadow-sm overflow-hidden"
-          >
-            <div className="absolute top-3 right-0 z-20 w-0 h-8 flex items-center justify-center">
+      {/* Left Sidebar: File Explorer - Always visible, expandable like Semantic Scholar */}
+      <motion.div
+        id="file-explorer-sidebar"
+        variants={sidebarVariants}
+        initial={false}
+        animate={isLeftExpanded ? "expanded" : "collapsed"}
+        custom={isLeftExpanded ? 320 : 48} // 48px when collapsed for single icon
+        className="relative h-full border-r border-border bg-background/95 backdrop-blur-sm z-10 shadow-sm overflow-hidden"
+      >
+        {isLeftExpanded ? (
+          <>
+            {/* Expanded Sidebar Header */}
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <h2 className="text-sm font-medium text-foreground">Files</h2>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsLeftExpanded(false)}
-                className="h-8 w-8 rounded-full border border-border bg-background shadow-sm transform translate-x-1/2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
-                aria-label="Collapse file explorer"
-                aria-expanded={isLeftExpanded}
-                aria-controls="file-explorer-sidebar"
+                className="h-8 w-8 rounded-sm hover:bg-muted"
+                aria-label="Minimize file explorer"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
-            
-            <ScrollArea className="h-full">
+            <ScrollArea className="h-[calc(100%-60px)]">
               <ExplorerSidebar cases={cases} isExpanded={true} />
             </ScrollArea>
-          </motion.div>
+          </>
+        ) : (
+          // Collapsed - Single folder icon
+          <div className="h-full flex flex-col items-center justify-start pt-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsLeftExpanded(true)}
+              className="h-10 w-10 rounded-md hover:bg-muted"
+              aria-label="Expand file explorer"
+              title="Files"
+            >
+              <Folder className="h-5 w-5" />
+            </Button>
+          </div>
         )}
-      </AnimatePresence>
+      </motion.div>
       
-      {/* Expand Button for Left Sidebar - only visible when collapsed */}
-      {!isLeftExpanded && (
-        <div className="absolute top-3 left-0 z-20 flex items-center justify-center h-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsLeftExpanded(true)}
-            className="h-8 w-8 rounded-full border border-border bg-background shadow-sm ml-2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
-            aria-label="Expand file explorer"
-            aria-expanded={isLeftExpanded}
-            aria-controls="file-explorer-sidebar"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-      
-      {/* Main Panel: PDF Viewer & Annotation */}
-      <main className="flex-1 overflow-auto bg-muted/20 relative flex flex-col">
-        <div className="flex-1 overflow-auto">
+      {/* Main Panel: PDF Viewer - Full viewport like Semantic Scholar */}
+      <main className="flex-1 overflow-hidden bg-white relative flex flex-col">
+        <div className="flex-1 overflow-hidden">
           {children}
         </div>
         
@@ -141,55 +136,41 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
         </AnimatePresence>
       </main>
       
-      {/* Right Sidebar: Annotations & AI Copilot */}
-      <AnimatePresence mode="wait">
+      {/* Right Sidebar: Annotations & AI Copilot - Completely hidden when collapsed */}
+      <AnimatePresence>
         {isRightExpanded && (
           <motion.div
             id="context-panel-sidebar"
-            variants={sidebarVariants}
-            initial="collapsed"
-            animate="expanded"
-            exit="collapsed"
-            custom={380}
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 380, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+            }}
             className="relative h-full border-l border-border bg-background/95 backdrop-blur-sm z-10 shadow-sm overflow-hidden"
           >
-            <div className="absolute top-3 left-0 z-20 w-0 h-8 flex items-center justify-center">
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between p-3 border-b border-border">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsRightExpanded(false)}
-                className="h-8 w-8 rounded-full border border-border bg-background shadow-sm transform -translate-x-1/2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
-                aria-label="Collapse context panel"
-                aria-expanded={isRightExpanded}
-                aria-controls="context-panel-sidebar"
+                className="h-8 w-8 rounded-sm hover:bg-muted"
+                aria-label="Close context panel"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
+              <h2 className="text-sm font-medium text-foreground">Tools</h2>
             </div>
             
-            <ScrollArea className="h-full">
-              <ContextSidebar activeTab={activeTab} onSetActiveTab={setActiveTab} />
+            <ScrollArea className="h-[calc(100%-60px)]">
+              <ContextSidebar activeTab={activeTab} onSetActiveTab={setActiveTab} isExpanded={true} />
             </ScrollArea>
           </motion.div>
         )}
       </AnimatePresence>
-      
-      {/* Expand Button for Right Sidebar - only visible when collapsed */}
-      {!isRightExpanded && (
-        <div className="absolute top-3 right-0 z-20 flex items-center justify-center h-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsRightExpanded(true)}
-            className="h-8 w-8 rounded-full border border-border bg-background shadow-sm mr-2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2"
-            aria-label="Expand context panel"
-            aria-expanded={isRightExpanded}
-            aria-controls="context-panel-sidebar"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 } 

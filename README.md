@@ -1,6 +1,23 @@
 # PDF Annotation Application
 
-A modern PDF viewer and annotation tool for legal documents. This application utilizes the professional @allenai/pdf-components library and follows Next.js 15 App Router best practices.
+A modern PDF viewer and annotation tool for legal documents. This application utilizes the professional `@davidkric/pdf-components` library and follows Next.js 15 App Router best practices.
+
+## ⚠️ Critical Implementation Notes
+
+### Render Type Selection
+**ALWAYS use `RENDER_TYPE.MULTI_CANVAS`** - This is crucial for proper PDF rendering:
+
+- ✅ **MULTI_CANVAS**: Provides correct sizing, proper zoom behavior, and reliable rendering
+- ❌ **SINGLE_CANVAS**: Causes severe sizing issues, broken zoom, and poor user experience
+
+See `/render-comparison` for a visual demonstration of the difference.
+
+### Library Usage
+The application uses `@davidkric/pdf-components` which provides:
+- Built-in zoom and scale management (no external scale state needed)
+- Proper canvas rendering with `MULTI_CANVAS` mode
+- Context providers for document state
+- Professional PDF viewer components
 
 ## Features
 
@@ -21,9 +38,16 @@ my-app/
 │   ├── workspace/          # Main application workspace
 │   │   ├── viewer/         # PDF viewer page
 │   │   └── ...
+│   ├── render-comparison/  # Demonstration of render type differences
+│   ├── test-sizing/        # Library defaults testing
+│   └── ...
 ├── components/             # Reusable React components
 │   ├── context_panel/      # Sidebar and context panels
 │   ├── pdf_viewer/         # PDF viewer components
+│   │   ├── core/           # Core PDF components
+│   │   ├── controls/       # Toolbar and controls
+│   │   ├── annotations/    # Annotation overlays
+│   │   └── ...
 │   ├── ui/                 # UI components (buttons, inputs, etc.)
 │   └── ...
 ├── lib/                    # Utility functions and services
@@ -62,6 +86,12 @@ without CORS issues.
 
 3. Visit http://localhost:3000 to access the application
 
+## Key Application Routes
+
+- `/workspace/viewer` - Main PDF viewer with annotation capabilities
+- `/render-comparison` - Visual comparison of SINGLE_CANVAS vs MULTI_CANVAS
+- `/test-sizing` - Testing page for library defaults
+
 ## Enhanced PDF.js Worker Handling
 
 The application uses several techniques to ensure the PDF.js worker loads correctly without CORS issues:
@@ -76,16 +106,34 @@ The application uses several techniques to ensure the PDF.js worker loads correc
 
 5. **Worker Shim**: A minimal worker implementation is provided as a fallback for environments where other methods fail.
 
-## Integration with @allenai/pdf-components
+## Integration with @davidkric/pdf-components
 
-This application leverages the professional @allenai/pdf-components library for PDF rendering and management. The library provides:
+This application leverages the professional `@davidkric/pdf-components` library for PDF rendering and management. **Key implementation insights:**
 
-- `DocumentWrapper`: For handling PDF document loading and state
-- `PageWrapper`: For rendering individual PDF pages
-- `HighlightOverlay`: For displaying highlights on PDF pages
-- Various context providers for document state management
+### Core Components Used:
+- `ContextProvider`: Provides document state management
+- `DocumentWrapper`: Handles PDF document loading with `RENDER_TYPE.MULTI_CANVAS`
+- `PageWrapper`: Renders individual PDF pages properly sized
+- `DocumentContext`: Access to document state (numPages, etc.)
+- `RENDER_TYPE`: Constants for render mode selection
 
-See [docs/pdf-components-usage.md](docs/pdf-components-usage.md) for a summary of where these components are used in the codebase.
+### Critical Implementation Requirements:
+1. **Always use `RENDER_TYPE.MULTI_CANVAS`** for proper rendering
+2. **Let the library handle zoom/scale** - no external scale management needed
+3. **Use ContextProvider wrapper** for all PDF components
+4. **Access document state** through DocumentContext
+
+### Example Correct Usage:
+```tsx
+<ContextProvider>
+  <DocumentWrapper 
+    file={fileUrl}
+    renderType={RENDER_TYPE.MULTI_CANVAS}
+  >
+    <YourPDFComponent />
+  </DocumentWrapper>
+</ContextProvider>
+```
 
 Custom UI components are built on top of these foundational components to create a cohesive and feature-rich application.
 

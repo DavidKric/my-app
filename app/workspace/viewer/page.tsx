@@ -73,7 +73,7 @@ const ResourceController = () => {
   );
 };
 
-export default function PDFViewerPage() {
+function PDFViewerContent() {
   const searchParams = useSearchParams();
   const fileParam = searchParams?.get('file'); 
   const { state, dispatch } = useAnnotations();
@@ -83,7 +83,6 @@ export default function PDFViewerPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [useDirectViewer, setUseDirectViewer] = useState(false);
 
   // Debug: log state on every render
   useEffect(() => {
@@ -101,72 +100,57 @@ export default function PDFViewerPage() {
         
         // If no file parameter is provided, use a default sample PDF
         if (!fileParam) {
-          console.log("No file parameter - using default example.pdf");
+          console.log("No file parameter - using default contract.pdf");
           setFileUrl('/sample-pdfs/contract.pdf');
           setLoading(false);
           return;
         }
         
-        // Special handling for arXiv files
-        if (fileParam.startsWith('file-arxiv-')) {
-          // Extract the arXiv ID from the param
-          const arxivId = fileParam.replace('file-arxiv-', '').replace(/-/g, '.');
-          const arxivUrl = `https://arxiv.org/pdf/${arxivId}`;
-          const proxyUrl = `/api/proxy/pdf?url=${encodeURIComponent(arxivUrl)}`;
-          console.log("Using arXiv proxy URL:", proxyUrl);
+        // For direct URLs (starting with http), use proxy
+        if (fileParam.startsWith('http')) {
+          const proxyUrl = `/api/proxy/pdf?url=${encodeURIComponent(fileParam)}`;
+          console.log("Using proxied URL directly:", proxyUrl);
           setFileUrl(proxyUrl);
           setLoading(false);
           return;
         }
         
-        // For actual files, construct the URL
-        if (fileParam.startsWith('http')) {
-          // For direct URL, create a proxy URL but don't try to fetch the data
-          // This allows the object tag to load it directly
-          const proxyUrl = `/api/proxy/pdf?url=${encodeURIComponent(fileParam)}`;
-          console.log("Using proxied URL directly:", proxyUrl);
-          setFileUrl(proxyUrl);
-          setLoading(false);
-        } else if (fileParam.startsWith('file-')) {
-          // Handle our file IDs from FileNode
-          const fileNode = fileParam;
+        // Handle file IDs with comprehensive mapping based on layout.tsx structure
+        if (fileParam.startsWith('file-')) {
+          // Define comprehensive file mapping that matches the structure in layout.tsx
+          const fileMapping: Record<string, { type: 'local' | 'url', path?: string, url?: string }> = {
+            // Pleadings folder
+            'file-complaint': { type: 'local', path: '/sample-pdfs/complaint.pdf' },
+            'file-answer': { type: 'local', path: '/sample-pdfs/answer.pdf' },
+            'file-exhibit-a-url': { type: 'url', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+            'file-exhibit-b-local': { type: 'local', path: '/sample-pdfs/contract.pdf' },
+            
+            // Discovery/Interrogatories folder
+            'file-interrogatories': { type: 'local', path: '/sample-pdfs/First_Set.pdf' },
+            'file-arxiv-2404-16130': { type: 'url', url: 'https://arxiv.org/pdf/2404.16130' },
+            
+            // Case 2 files
+            'file-contract': { type: 'local', path: '/sample-pdfs/contract.pdf' },
+          };
           
-          // Look for the file from the file structure
-          // First check if it has a url property
-          if (fileNode.includes('exhibit-a-url')) {
-            // For this specific case, use the URL directly through proxy
-            const url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
-            const proxyUrl = `/api/proxy/pdf?url=${encodeURIComponent(url)}`;
-            console.log("Using URL from FileNode through proxy:", proxyUrl);
-            setFileUrl(proxyUrl);
-            setLoading(false);
-          } 
-          // Then check if it has a path property
-          else if (fileNode.includes('exhibit-b-local')) {
-            const localPath = '/sample-pdfs/contract.pdf';
-            console.log("Using local path from FileNode:", localPath);
-            setFileUrl(localPath);
-            setLoading(false);
-          } 
-          // Otherwise use our existing sample PDF mapping
-          else if (fileNode === 'file-complaint') {
-            console.log("Using complaint.pdf sample");
-            setFileUrl('/sample-pdfs/complaint.pdf');
-          } else if (fileNode === 'file-contract') {
-            console.log("Using contract.pdf sample");
-            setFileUrl('/sample-pdfs/contract.pdf');
-          } else if (fileNode === 'file-answer') {
-            console.log("Using answer.pdf sample");
-            setFileUrl('/sample-pdfs/answer.pdf');
-          } else if (fileNode === 'file-interrogatories') {
-            console.log("Using interrogatories.pdf sample");
-            setFileUrl('/sample-pdfs/interrogatories.pdf');
+          const fileConfig = fileMapping[fileParam];
+          
+          if (fileConfig) {
+            if (fileConfig.type === 'local') {
+              console.log(`Using local file: ${fileConfig.path}`);
+              setFileUrl(fileConfig.path || null);
+            } else if (fileConfig.type === 'url') {
+              console.log(`Using URL via proxy: ${fileConfig.url}`);
+              const proxyUrl = `/api/proxy/pdf?url=${encodeURIComponent(fileConfig.url!)}`;
+              setFileUrl(proxyUrl);
+            }
           } else {
-            // Assume it's a file name that matches one of our samples
-            const url = `/sample-pdfs/${fileNode.replace('file-', '')}.pdf`;
-            console.log("Using derived sample PDF:", url);
-            setFileUrl(url);
+            // Fallback: try to derive filename from ID
+            const derivedPath = `/sample-pdfs/${fileParam.replace('file-', '')}.pdf`;
+            console.log("Using fallback derived path:", derivedPath);
+            setFileUrl(derivedPath);
           }
+          
           setLoading(false);
         } else {
           // Assume it's a simple filename
@@ -238,43 +222,42 @@ export default function PDFViewerPage() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col">
-      {/* Debug banner */}
-      <div style={{ background: '#222', color: '#fff', padding: 8, fontSize: 12, zIndex: 1000 }}>
-        <b>PDFViewerPage Debug:</b> fileParam: {String(fileParam)} | fileUrl: {String(fileUrl)} | pdfData: {pdfData ? 'yes' : 'no'} | loading: {String(loading)} | error: {String(error)}
-      </div>
+    <>
       {/* Add the resource controller to handle preload warnings */}
       <ResourceController />
-      <div className="flex-1">
-        <NoSSR>
-          <PDFViewer
-            fileUrl={fileUrl}
-            pdfData={pdfData}
-            currentPage={currentPage}
-            onPageChange={handlePageChange}
-            onDocumentLoaded={handleDocumentLoadSuccess}
-            annotations={state.annotations as any[]}
-            showSearchBar={true}
-            onCreateAnnotation={(annotationData) => {
-              const id = `annotation-${Date.now()}`;
-              dispatch({
-                type: 'ADD_ANNOTATION',
-                annotation: {
-                  id,
-                  ...annotationData,
-                  timestamp: Date.now(),
-                  creator: 'USER'
-                } as any
-              });
-              return id;
-            }}
-            onAnnotationSelected={(annotation) => {
-              console.log('Annotation selected:', annotation);
-              dispatch({ type: 'SELECT_ANNOTATION', id: annotation.id });
-            }}
-          />
-        </NoSSR>
-      </div>
-    </div>
+      <NoSSR>
+        <PDFViewer
+          fileUrl={fileUrl}
+          pdfData={pdfData}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
+          onDocumentLoaded={handleDocumentLoadSuccess}
+          annotations={state.annotations as any[]}
+          showSearchBar={true}
+          onCreateAnnotation={(annotationData) => {
+            const id = `annotation-${Date.now()}`;
+            dispatch({
+              type: 'ADD_ANNOTATION',
+              annotation: {
+                id,
+                ...annotationData,
+                timestamp: Date.now(),
+                creator: 'USER'
+              } as any
+            });
+            return id;
+          }}
+          onAnnotationSelected={(annotation) => {
+            console.log('Annotation selected:', annotation);
+            dispatch({ type: 'SELECT_ANNOTATION', id: annotation.id });
+          }}
+        />
+      </NoSSR>
+    </>
   );
+}
+
+export default function PDFViewerPage() {
+  // Remove LayoutClient wrapper - it's already provided by the workspace layout
+  return <PDFViewerContent />;
 }

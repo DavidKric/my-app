@@ -24,9 +24,10 @@ interface Tab {
 interface ContextSidebarProps {
   activeTab?: string;
   onSetActiveTab?: (tabId: string) => void;
+  isExpanded?: boolean; // Keep for compatibility, but always render as expanded
 }
 
-export default function ContextSidebar({ activeTab: externalActiveTab, onSetActiveTab }: ContextSidebarProps) {
+export default function ContextSidebar({ activeTab: externalActiveTab, onSetActiveTab, isExpanded = true }: ContextSidebarProps) {
   // Use internal state if no external state is provided
   const [internalActiveTab, setInternalActiveTab] = useState('annotations');
   const activeTab = externalActiveTab || internalActiveTab;
@@ -85,6 +86,7 @@ export default function ContextSidebar({ activeTab: externalActiveTab, onSetActi
     },
   ];
 
+  // Always render the full expanded view since minimized state is handled by LayoutClient
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background/90 glass-morphism">
       <div className="border-b border-border bg-white/50 dark:bg-gray-950/50 backdrop-blur-sm">
@@ -136,7 +138,7 @@ export default function ContextSidebar({ activeTab: externalActiveTab, onSetActi
               className="h-full"
             >
               <AnnotationSidebar 
-                annotations={annotations} 
+                annotations={annotations as any[]} 
                 currentPage={currentPage}
                 onAnnotationClick={handleAnnotationClick}
               />

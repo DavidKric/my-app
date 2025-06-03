@@ -85,7 +85,18 @@
   }
 }
 
-/* PDF Viewer Styles */
+/* ------------------------------------------------------------------ */
+/* 📄  PDF DAVIDKRIC LIBRARY STYLING                                  */
+/* Let the @davidkric/pdf-components library handle all PDF rendering */
+/* We only hide react-pdf duplicates and add minimal container styles */
+/* ------------------------------------------------------------------ */
+
+/* Hide react-pdf canvas to prevent duplicate rendering */
+.react-pdf__Page__canvas {
+  display: none !important;
+}
+
+/* PDF Viewer Container - Basic layout */
 .pdf-viewer {
   display: flex;
   flex-direction: column;
@@ -113,52 +124,43 @@
   background-color: #f5f5f5;
   flex: 1;
   overflow: auto;
-  padding: 1rem;
+  padding: 20px;
 }
 
+/* Container for the davidkric library PDF */
 .pdf-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 100%;
+  max-width: 1000px;
   position: relative;
-  background-color: white;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Make PDF pages centered and properly contained */
+/* Let react-pdf Document use natural layout */
 .react-pdf__Document {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 100%;
 }
 
+/* Minimal react-pdf Page wrapper - library handles the real rendering */
 .react-pdf__Page {
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  background-color: white;
+  margin-bottom: 20px;
   position: relative;
-  max-width: 100%;
-  height: auto;
-  margin: 0 auto;
+  background: transparent;
 }
 
-/* Prevent canvas overflow */
-.react-pdf__Page__canvas {
-  max-width: 100%;
-  height: auto !important;
-  display: block;
-  user-select: none;
-}
-
-/* Text selection styles */
-.react-pdf__Page__textContent {
-  user-select: text;
-  cursor: text;
-  max-width: 100%;
+/* Keep text and annotation layers functional */
+.react-pdf__Page__textContent,
+.react-pdf__Page__annotations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
 }
 
 .react-pdf__Page__textContent span {
@@ -167,7 +169,29 @@
 }
 
 .react-pdf__Page__textContent span::selection {
-  background-color: rgba(59, 130, 246, 0.3); /* Blue selection color */
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+/* ------------------------------------------------------------------ */
+/* 📄  DAVIDKRIC LIBRARY NATIVE STYLES (DO NOT OVERRIDE)             */
+/* The library uses these classes for proper PDF page rendering       */
+/* ------------------------------------------------------------------ */
+
+/* The library's main page styling - DO NOT override core properties */
+.pdf-reader__page {
+  /* Let the library handle dimensions, background, etc. */
+  /* Only add safe enhancements that don't break core functionality */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 4px !important;
+  margin: 0 auto 24px auto !important;
+  background-color: white !important;
+}
+
+/* Ensure library images/canvas render properly */
+.pdf-reader__page canvas,
+.pdf-reader__page img {
+  /* DO NOT override max-width, width, height - library controls these */
+  display: block !important;
 }
 
 /* Annotation styles */
@@ -179,7 +203,6 @@
   height: 100%;
   pointer-events: none;
   z-index: 2;
-  max-width: 100%;
 }
 
 .pdf-annotation {
