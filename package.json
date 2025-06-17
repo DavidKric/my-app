@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@jest/types": "^30.0.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -54,13 +55,16 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "babel-jest": "^30.0.0",
     "copy-webpack-plugin": "^13.0.0",
     "css-loader": "^7.1.2",
     "eslint": "^9",
     "eslint-config-next": "15.2.4",
+    "formdata-node": "^6.0.3",
     "formidable": "^3.5.4",
     "jest": "^30.0.0",
     "jest-environment-jsdom": "^30.0.0",
+    "jest-environment-node": "^30.0.0",
     "less": "^4.2.2",
     "less-loader": "^12.2.0",
     "next-router-mock": "^1.0.2",
@@ -70,6 +74,7 @@
     "style-loader": "^4.0.0",
     "tailwindcss": "^4",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "web-streams-polyfill": "^4.1.0"
   }
 }
