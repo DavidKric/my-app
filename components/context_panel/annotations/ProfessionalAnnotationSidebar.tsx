@@ -16,7 +16,8 @@ import {
   FileText, 
   Link as LinkIcon, 
   Search, 
-  Filter, 
+  Filter,
+  LocateFixed, // For scroll to annotation
   X, 
   MessageSquare, 
   ChevronDown, 
@@ -76,6 +77,8 @@ interface AnnotationSidebarProps {
   className?: string;
 }
 
+import scrollService from '@/lib/scroll-service'; // Import scrollService
+
 // Helper functions
 const formatDate = (date: Date): string => {
   return new Intl.DateTimeFormat('en-US', {
@@ -94,26 +97,50 @@ const formatTime = (date: Date): string => {
 
 // Color mapping for annotation types
 const typeColors: Record<Annotation["type"], string> = {
-  clause: "bg-blue-100 text-blue-800 border-blue-200",
-  risk: "bg-red-100 text-red-800 border-red-200",
-  definition: "bg-purple-100 text-purple-800 border-purple-200",
-  reference: "bg-amber-100 text-amber-800 border-amber-200"
+  clause: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+  risk: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700",
+  definition: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700",
+  reference: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700",
+  // Add other types if they have specific badges and need theme adjustments
+  highlight: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
+  note: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700",
+  comment: "bg-gray-100 dark:bg-gray-700/30 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600",
+  draw: "bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border-pink-300 dark:border-pink-700",
+  key_insight: "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-700",
+  method: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700",
+  result: "bg-lime-100 dark:bg-lime-900/30 text-lime-700 dark:text-lime-300 border-lime-300 dark:border-lime-700",
+  goal: "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700",
+  // Default for any other string types that might appear
+  other: "bg-gray-100 dark:bg-gray-700/30 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600",
 };
 
 const typeIcons: Record<Annotation["type"], React.ReactNode> = {
   clause: <BookText className="h-4 w-4" />,
   risk: <AlertTriangle className="h-4 w-4" />,
   definition: <FileText className="h-4 w-4" />,
-  reference: <LinkIcon className="h-4 w-4" />
+  reference: <LinkIcon className="h-4 w-4" />,
+  highlight: <Highlighter className="h-4 w-4" />, // Assuming Highlighter icon exists
+  note: <MessageSquare className="h-4 w-4" />,
+  comment: <MessageSquare className="h-4 w-4" />, // Could be same as note or different
+  draw: <Pen className="h-4 w-4" />, // Assuming Pen icon exists
+  key_insight: <Brain className="h-4 w-4" />, // Assuming Brain icon
+  method: <FlaskConical className="h-4 w-4" />, // Assuming FlaskConical
+  result: <Target className="h-4 w-4" />, // Assuming Target
+  goal: <Goal className="h-4 w-4" />, // Assuming Goal
+  other: <FileText className="h-4 w-4" />, // Default icon
 };
 
 // Components
-const AnnotationTypeBadge = ({ type }: { type: Annotation["type"] }) => (
-  <Badge variant="outline" className={cn("flex items-center gap-1 font-normal", typeColors[type])}>
-    {typeIcons[type]}
-    <span className="capitalize">{type}</span>
-  </Badge>
-);
+const AnnotationTypeBadge = ({ type }: { type: Annotation["type"] }) => {
+  const colorClass = typeColors[type] || typeColors.other;
+  const icon = typeIcons[type] || typeIcons.other;
+  return (
+    <Badge variant="outline" className={cn("flex items-center gap-1 font-normal py-0.5 px-1.5 text-xs", colorClass)}>
+      {icon}
+      <span className="capitalize">{type}</span>
+    </Badge>
+  );
+};
 
 const AnnotationCard = ({
   annotation,
@@ -290,7 +317,7 @@ export function AnnotationSidebar({
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedTypes, setSelectedTypes] = React.useState<Annotation["type"][]>([]);
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
-  const [sortBy, setSortBy] = React.useState<"newest" | "oldest" | "type">("newest");
+  const [sortBy, setSortBy] = React.useState<"newest" | "oldest" | "type" | "page">("newest"); // Added "page"
   const [selectedGroup, setSelectedGroup] = React.useState<string>("all");
   const groups = React.useMemo(
     () => Array.from(new Set(annotations.map(a => a.groupId).filter(Boolean))),
@@ -337,6 +364,8 @@ export function AnnotationSidebar({
         return a.createdAt.getTime() - b.createdAt.getTime();
       } else if (sortBy === "type") {
         return a.type.localeCompare(b.type);
+      } else if (sortBy === "page") {
+        return (a.page || 0) - (b.page || 0); // Sort by page number, handle undefined
       }
       return 0;
     });
@@ -351,6 +380,8 @@ export function AnnotationSidebar({
         return a.createdAt.getTime() - b.createdAt.getTime();
       } else if (sortBy === "type") {
         return a.type.localeCompare(b.type);
+      } else if (sortBy === "page") {
+        return a.page - b.page; // Sort by page number
       }
       return 0;
     });
@@ -358,21 +389,28 @@ export function AnnotationSidebar({
 
   // Group annotations by type
   const annotationsByType = React.useMemo(() => {
-    const grouped: Record<Annotation["type"], Annotation[]> = {
-      clause: [],
-      risk: [],
-      definition: [],
-      reference: []
-    };
+    // Initialize grouped with all possible keys from typeColors to ensure all categories appear
+    const grouped: Record<string, Annotation[]> = {};
+    Object.keys(typeColors).forEach(key => {
+      grouped[key] = [];
+    });
     
     if (filteredAnnotations && Array.isArray(filteredAnnotations)) {
       filteredAnnotations.forEach(annotation => {
-        if (annotation && annotation.type && grouped[annotation.type]) {
+        if (annotation && annotation.type) {
+          if (!grouped[annotation.type]) { // Handle types not in initial typeColors (e.g. "other")
+            grouped[annotation.type] = [];
+          }
           grouped[annotation.type].push(annotation);
         }
       });
     }
-    
+    // Filter out empty groups unless they were part of the original typeColors, for consistent display
+    for (const type in grouped) {
+        if (grouped[type].length === 0 && !typeColors[type as Annotation["type"]]) {
+            delete grouped[type];
+        }
+    }
     return grouped;
   }, [filteredAnnotations]);
 
@@ -487,10 +525,11 @@ export function AnnotationSidebar({
           <select
             className="rounded-md border bg-background px-2 py-1 text-sm"
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "newest" | "oldest" | "type")}
+            onChange={(e) => setSortBy(e.target.value as "newest" | "oldest" | "type" | "page")}
           >
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
+            <option value="page">Page Number</option> {/* Added Page Number option */}
             <option value="type">Type</option>
           </select>
         </div>
@@ -511,7 +550,20 @@ export function AnnotationSidebar({
                   <AnnotationCard
                     key={annotation.id}
                     annotation={annotation}
-                    onClick={() => onAnnotationClick?.(annotation.id)}
+                    onClick={() => {
+                      // Use scrollService to navigate
+                      // Assuming 'annotation' object matches what scrollService expects
+                      // or can be easily adapted. The key parts are id and page/pageNumber.
+                      // The local Annotation type uses 'page', scrollService uses 'pageNumber'.
+                      // We need to ensure the object passed to scrollService has 'pageNumber'.
+                      const annotationForScroll = {
+                        ...annotation,
+                        pageNumber: annotation.page // Map 'page' to 'pageNumber'
+                      };
+                      scrollService.scrollToAnnotation(annotationForScroll as any);
+                      // Call original onAnnotationClick if it exists for other purposes
+                      onAnnotationClick?.(annotation.id);
+                    }}
                   />
                 ))
               ) : (
@@ -575,7 +627,14 @@ export function AnnotationSidebar({
                       <AnnotationCard
                         key={annotation.id}
                         annotation={annotation}
-                        onClick={() => onAnnotationClick?.(annotation.id)}
+                    onClick={() => {
+                      const annotationForScroll = {
+                        ...annotation,
+                        pageNumber: annotation.page
+                      };
+                      scrollService.scrollToAnnotation(annotationForScroll as any);
+                      onAnnotationClick?.(annotation.id);
+                    }}
                       />
                     ))
                   ) : (

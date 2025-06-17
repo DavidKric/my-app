@@ -7,30 +7,37 @@ import CaseSwitcher from '@/components/file_explorer/CaseSwitcher';
 import SearchBar from './SearchBar';
 import FileTree from './FileTree';
 import SearchResults from './SearchResults';
-import { FileText } from 'lucide-react';
+import RecentFiles from './RecentFiles'; // Import RecentFiles component
+import { FileText, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useRecentFiles } from '@/lib/useRecentFiles';
+import { useRecentFiles } from '@/lib/useRecentFiles'; // Though RecentFiles.tsx now uses this directly
+import { useCaseContext } from '@/contexts/CaseContext';
+import { FileNode as FileNodeType, FolderNode as FolderNodeType } from '@/types/file_explorer/file-structure'; // Renamed for clarity
 
 // Define a union type for the active panel.
 type Panel = 'explorer' | 'search' | 'history';
 
 interface SidebarProps {
-  cases: Case[];
+  // cases prop is removed, will get from context
   isExpanded?: boolean;
 }
 
-export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarProps) {
-  const [activeProjectId, setActiveProjectId] = useState(cases[0]?.id || '');
+export default function ExplorerSidebar({ isExpanded = true }: SidebarProps) {
+  const { cases, selectedCase, selectCase, addFilesToSelectedCase } = useCaseContext(); // Added addFilesToSelectedCase
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<FileNode[]>([]);
+  const [searchResults, setSearchResults] = useState<FileNodeType[]>([]);
   const [activePanel, setActivePanel] = useState<Panel>('explorer');
   const [activeFileId, setActiveFileId] = useState('');
-  const { recentFiles, clearFiles, addFile } = useRecentFiles();
+  const { recentFiles, clearFiles, addFile: addRecentFile } = useRecentFiles(); // Renamed addFile to avoid conflict
   const router = useRouter();
+  const [isDragging, setIsDragging] = useState(false); // For drag-drop visual feedback
 
-  const activeProject = cases.find((p) => p.id === activeProjectId);
+  // TODO: These functions (createFile, createFolder, renameFile, etc.) should ideally be part of CaseContext
+  // or a service that updates the FileTree's source of truth (selectedCase.root) and persists it.
+  // For now, we'll assume they are handled by FileTree and its `saveFileTreeState` via props.
+  // The challenge is that FileTree is a child, and drag-drop happens on ExplorerSidebar.
 
-  const collectFiles = (node: FolderNode | FileNode, query: string, acc: FileNode[]) => {
+  const collectFiles = (node: FolderNodeType | FileNodeType, query: string, acc: FileNodeType[]) => {
     if (node.type === 'file') {
       if (node.name.toLowerCase().includes(query.toLowerCase())) {
         acc.push(node);
@@ -42,49 +49,51 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (!query.trim() || !activeProject) {
+    if (!query.trim() || !selectedCase) { // Use selectedCase
       setSearchResults([]);
       return;
     }
     const results: FileNode[] = [];
-    collectFiles(activeProject.root, query, results);
+    collectFiles(selectedCase.root, query, results); // Use selectedCase.root
     setSearchResults(results);
   };
 
   // File explorer content
   const fileExplorerContent = (
     <div className="h-full flex flex-col">
-      {/* Project Switcher */}
+      {/* Project Switcher - Now consumes context directly */}
       <div className="p-2 border-b border-border">
-        <CaseSwitcher
-          cases={cases}
-          activeProjectId={activeProjectId}
-          onSelectProject={setActiveProjectId}
-        />
+        <CaseSwitcher />
       </div>
       {/* Search Bar (within Explorer) */}
       <div className="p-2 border-b border-border">
         <SearchBar
           query={searchQuery}
           onChange={setSearchQuery}
-          onSearch={handleSearch}
+          onSearch={handleSearch} // handleSearch now uses selectedCase
         />
       </div>
       {/* File Tree */}
       <div className="flex-1 overflow-auto">
-        {activeProject && (
+        {selectedCase && selectedCase.root && ( // Check selectedCase and its root
           <FileTree
-            root={activeProject.root}
+            root={selectedCase.root} // Pass selectedCase.root
             searchQuery={searchQuery}
             activeFileId={activeFileId}
             onFileSelect={(file) => {
               setActiveFileId(file.id);
-              addFile(file);
-              if (file.fileType === 'pdf') {
-                router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}`);
+              addRecentFile(file); // Use renamed function
+              if (file.fileType === 'pdf' && selectedCase) {
+                router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}&caseId=${selectedCase.id}`);
               }
             }}
           />
+        )}
+        {isDragging && (
+          <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-600 flex flex-col items-center justify-center pointer-events-none rounded-md">
+            <UploadCloud size={48} className="text-blue-600" />
+            <p className="text-blue-600 font-semibold">Drop PDF files here</p>
+          </div>
         )}
       </div>
     </div>
@@ -105,40 +114,66 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
     </div>
   );
 
-  // History Panel content
-  const historyPanelContent = (
-    <div className="h-full flex flex-col p-2 space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="text-lg font-semibold">History</div>
-        {recentFiles.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={clearFiles}>
-            Clear
-          </Button>
-        )}
-      </div>
-      <div className="flex-1 overflow-auto space-y-1">
-        {recentFiles.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No recent files.</p>
-        ) : (
-          recentFiles.map(file => (
-            <button
-              key={file.id}
-              className="flex w-full items-center rounded px-2 py-1 text-left hover:bg-accent"
-              onClick={() => {
-                addFile(file)
-                if (file.fileType === 'pdf') {
-                  router.push(`/workspace/viewer?file=${encodeURIComponent(file.id)}`)
-                }
-              }}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              {file.name}
-            </button>
-          ))
-        )}
-      </div>
-    </div>
-  );
+  // History Panel content is now handled by RecentFiles.tsx
+  // const historyPanelContent = ( ... existing code removed ... );
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+
+    if (!selectedCase) {
+      alert("Please select a case first to upload files.");
+      return;
+    }
+
+    const files = Array.from(event.dataTransfer.files);
+    const pdfFiles = files.filter(file => file.type === "application/pdf");
+
+    if (pdfFiles.length === 0) {
+      alert("No PDF files found. Please drop PDF files only.");
+      return;
+    }
+
+    // Create new FileNode objects for each PDF
+    const newFileNodes: FileNodeType[] = pdfFiles.map(pdfFile => ({
+      id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, // More robust ID
+      name: pdfFile.name,
+      type: 'file' as const,
+      fileType: 'pdf' as const,
+      parentId: selectedCase.root.id, // Add to the root of the selected case
+      // path and url would be undefined for newly uploaded local files unless handled by a backend
+    }));
+
+    // Here's where we need to update the state.
+    // Ideally, CaseContext would have a function like `addFilesToCase(caseId, parentId, files)`
+    // For now, this is a conceptual challenge as FileTree manages its own state via `load/saveFileTreeState`.
+    // A temporary solution might involve directly manipulating selectedCase.root and forcing a re-render,
+    // but this bypasses FileTree's internal state management and persistence logic.
+
+    // For this subtask, let's log and acknowledge the limitation.
+    // console.log("Dropped files:", newFileNodes);
+    // alert(`Simulated upload of ${newFileNodes.length} PDF(s) to case "${selectedCase.name}". \nPersistence via fileTreeStorage for drag-and-drop is not yet fully implemented here and needs context/state management adjustments.`);
+
+    if (newFileNodes.length > 0 && selectedCase) {
+      addFilesToSelectedCase(selectedCase.root.id, newFileNodes); // Add to root of current case
+      alert(`${newFileNodes.length} PDF(s) added to case "${selectedCase.name}".`);
+    }
+    // Persistence should now be handled by FileTree via CaseContext state update.
+  };
+
 
   // Determine which panel content to render
   const renderContent = () => {
@@ -147,8 +182,8 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
         return fileExplorerContent;
       case 'search':
         return searchPanelContent;
-      case 'history':
-        return historyPanelContent;
+      case 'history': // Keep 'history' as the key for activePanel if you prefer not to change it everywhere
+        return <RecentFiles />;
       default:
         return fileExplorerContent;
     }
@@ -156,7 +191,12 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
 
   // Simple navigation tabs at the top
   return (
-    <div className="h-full flex flex-col">
+    <div
+      className="h-full flex flex-col relative" // Added relative for isDragging overlay
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Simple tab navigation */}
       <div className="flex border-b border-border">
         <button
@@ -182,12 +222,12 @@ export default function ExplorerSidebar({ cases, isExpanded = true }: SidebarPro
         <button
           onClick={() => setActivePanel('history')}
           className={`flex-1 p-2 text-sm font-medium transition-colors ${
-            activePanel === 'history' 
+            activePanel === 'history' // Keep 'history' as panel key
               ? 'text-primary border-b-2 border-primary bg-primary/5' 
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          History
+          Recent
         </button>
       </div>
       
