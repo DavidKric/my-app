@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@davidkric/pdf-components": "file:../costum_packages/davidkric-pdf-components-v1.0.3.tgz",
     "@langchain/core": "^0.3.43",
     "@langchain/langgraph-sdk": "^0.0.62",
     "@prisma/client": "^5.22.0",
