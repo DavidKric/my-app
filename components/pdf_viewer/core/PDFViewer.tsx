@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, Suspense, useContext, useCallback, 
 import dynamic from 'next/dynamic';
 import { useAnnotations } from '@/components/context_panel/annotations/AnnotationProvider';
 // TemporaryHighlight was already added in a previous successful step, scrollService needs its full import
-import scrollService, { ScrollPosition, TemporaryHighlight } from '@/lib/scroll-service';
+import scrollService, * as ScrollServiceTypes from '@/lib/scroll-service';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { 
@@ -43,7 +43,8 @@ import {
   RENDER_TYPE,
   DocumentContext,
   TransformContext,
-  ContextProvider
+  ContextProvider,
+  IDocumentContext
 } from '@davidkric/pdf-components';
 import {
   Dialog,
@@ -55,7 +56,7 @@ import {
 
 // Import Toolbar components
 import { PDFToolbar as PDFToolbarComponent } from '../controls/EnhancedPDFToolbar';
-const PDFToolbar = PDFToolbarComponent as any;
+const PDFToolbar = PDFToolbarComponent;
 
 // Dynamic imports to prevent SSR issues
 const PDFComponents = dynamic(() => import('./PDFComponents'), {
@@ -76,13 +77,20 @@ const PDFOutline = dynamic(() => import('./PDFOutline'), { ssr: false }) as any;
 const TextSelectionPopover = dynamic(() => import('../annotations/TextSelectionPopover'), { ssr: false });
 
 interface TextSelectionRect {
-  top: number;
-  left: number;
+  x: number; // Changed from left
+  y: number; // Changed from top
   width: number;
   height: number;
   // For positioning relative to viewport if needed
   clientX?: number;
   clientY?: number;
+}
+
+interface LibraryRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
 }
 interface TextSelectionData {
   text: string;
@@ -130,8 +138,8 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
   autoScrollToPage
 }) => {
   // Now we can access the library context!
-  const { numPages, outline } = useContext(DocumentContext);
-  const { scale, setScale, rotate } = useContext(TransformContext) as { // Assuming setScale and rotate exist
+  const { numPages, outline } = React.useContext(DocumentContext as React.Context<IDocumentContext>) as IDocumentContext;
+  const { scale, setScale, rotate } = React.useContext(TransformContext as React.Context<any>) as unknown as {
     scale: number;
     setScale: (scale: number) => void;
     rotate: (angle: number) => void;
@@ -168,7 +176,7 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
   const [textSelectionData, setTextSelectionData] = useState<TextSelectionData | null>(null);
   const [showAnnotationNoteInput, setShowAnnotationNoteInput] = useState<boolean>(false);
   const [currentAnnotationText, setCurrentAnnotationText] = useState<string>('');
-  const [temporaryHighlights, setTemporaryHighlights] = useState<TemporaryHighlight[]>([]);
+  const [temporaryHighlights, setTemporaryHighlights] = useState<ScrollServiceTypes.TemporaryHighlight[]>([]);
 
 
   // Update internal page when prop changes
@@ -267,7 +275,7 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
     }, 300);
   };
 
-  const handleTextSelection = (selectedText: string, boundingRect: any, pageNumber: number) => {
+  const handleTextSelection = (selectedText: string, boundingRect: LibraryRect, pageNumber: number) => {
     // If an annotation tool is active from the toolbar, create annotation directly
     if (activeAnnotationTool && onCreateAnnotation) {
       onCreateAnnotation({
@@ -300,22 +308,22 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
         // This is simplified; true calculation needs to account for scroll offsets within the page if multi-canvas pages are individually scrollable.
         // For now, let's assume boundingRect is relative to the *start* of the PDF page content.
         popoverRect = {
-          top: pageRect.top - containerRect.top + viewerContainer.scrollTop + boundingRect.top * scale,
-          left: pageRect.left - containerRect.left + viewerContainer.scrollLeft + boundingRect.left * scale,
+          y: pageRect.top - containerRect.top + viewerContainer.scrollTop + boundingRect.top * scale, // 'top' changed to 'y'
+          x: pageRect.left - containerRect.left + viewerContainer.scrollLeft + boundingRect.left * scale, // 'left' changed to 'x'
           width: boundingRect.width * scale,
           height: boundingRect.height * scale,
         };
       } else {
          // Fallback if pageElement not found, adjust by current scale. This might not be perfectly accurate.
         popoverRect = {
-          top: boundingRect.top * scale + (containerRef.current?.offsetTop || 0),
-          left: boundingRect.left * scale + (containerRef.current?.offsetLeft || 0),
+          y: boundingRect.top * scale + (containerRef.current?.offsetTop || 0), // 'top' changed to 'y'
+          x: boundingRect.left * scale + (containerRef.current?.offsetLeft || 0), // 'left' changed to 'x'
           width: boundingRect.width * scale,
           height: boundingRect.height * scale,
         };
       }
       // Add a small offset to prevent popover from overlapping selection too much
-      popoverRect.top += popoverRect.height + 5;
+      popoverRect.y += popoverRect.height + 5;
 
 
       setTextSelectionData({ text: selectedText, rect: popoverRect, pageNumber });
@@ -414,7 +422,7 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
 
   // Register scroll service listeners
   useEffect(() => {
-    const generalScrollListener = (position: ScrollPosition) => {
+    const generalScrollListener = (position: ScrollServiceTypes.ScrollPosition) => {
       if (position.pageNumber && position.pageNumber !== page) { // Use internal 'page' state
         handlePageChange(position.pageNumber);
       }
@@ -434,7 +442,7 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
       }
     };
 
-    const tempHighlightListenerCallback = (highlight: TemporaryHighlight) => {
+    const tempHighlightListenerCallback = (highlight: ScrollServiceTypes.TemporaryHighlight) => {
       setTemporaryHighlights(prev => [highlight]); // Replace previous temp highlights with the new one
       // Optional: Scroll to the page of this highlight if not already handled by general listener
       if (highlight.pageNumber !== page) {
@@ -724,8 +732,8 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
                 <div
                   style={{
                     position: 'absolute',
-                    top: textSelectionData.rect.top + textSelectionData.rect.height + 10, // Position below selection
-                    left: textSelectionData.rect.left,
+                    top: textSelectionData.rect.y + textSelectionData.rect.height + 10, // Position below selection
+                    left: textSelectionData.rect.x,
                     zIndex: 101, // Above popover
                   }}
                   className="bg-background p-2 border rounded shadow-lg w-64"
