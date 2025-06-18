@@ -39,6 +39,7 @@ export default function SearchBar({ query, onChange, onSearch }: SearchBarProps)
           }
         }}
         className="pl-8"
+        dir="auto" // Added for RTL support
       />
       {/* Search icon inside input */}
       {onSearch && (

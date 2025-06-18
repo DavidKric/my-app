@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef, Suspense, useContext, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useAnnotations } from '@/components/context_panel/annotations/AnnotationProvider';
+// TemporaryHighlight was already added in a previous successful step, scrollService needs its full import
+import scrollService, { ScrollPosition, TemporaryHighlight } from '@/lib/scroll-service';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { 
@@ -163,10 +165,11 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
   const [showOutlinePanel, setShowOutlinePanel] = useState<boolean>(false);
   const [showThumbnailsPanel, setShowThumbnailsPanel] = useState<boolean>(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState<boolean>(false);
-  const [showAiHighlights, setShowAiHighlights] = useState<boolean>(true); // State for AI highlights
+  const [showAiHighlights, setShowAiHighlights] = useState<boolean>(true);
   const [textSelectionData, setTextSelectionData] = useState<TextSelectionData | null>(null);
   const [showAnnotationNoteInput, setShowAnnotationNoteInput] = useState<boolean>(false);
   const [currentAnnotationText, setCurrentAnnotationText] = useState<string>('');
+  const [temporaryHighlights, setTemporaryHighlights] = useState<TemporaryHighlight[]>([]);
 
 
   // Update internal page when prop changes
@@ -410,10 +413,10 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
     }
   };
 
-  // Register scroll service listener
+  // Register scroll service listeners
   useEffect(() => {
-    const scrollListener = (position: ScrollPosition) => {
-      if (position.pageNumber && position.pageNumber !== currentPage) {
+    const generalScrollListener = (position: ScrollPosition) => {
+      if (position.pageNumber && position.pageNumber !== page) { // Use internal 'page' state
         handlePageChange(position.pageNumber);
       }
       
@@ -423,14 +426,33 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
           handleAnnotationSelected(annotation);
         }
       }
+      // If a temporary highlight was also sent with a general scroll, ensure it's processed
+      if (position.temporaryHighlight) {
+        setTemporaryHighlights(prev => {
+          // Replace if ID exists, otherwise add. Clear others for simplicity.
+          return [position.temporaryHighlight!];
+        });
+      }
+    };
+
+    const tempHighlightListenerCallback = (highlight: TemporaryHighlight) => {
+      setTemporaryHighlights(prev => [highlight]); // Replace previous temp highlights with the new one
+      // Optional: Scroll to the page of this highlight if not already handled by general listener
+      if (highlight.pageNumber !== page) {
+        handlePageChange(highlight.pageNumber);
+      }
+      // Optional: Set a timer to clear this temporary highlight
+      // setTimeout(() => setTemporaryHighlights(prev => prev.filter(h => h.id !== highlight.id)), 5000);
     };
     
-    scrollService.addListener('pdf-viewer', scrollListener);
+    scrollService.addListener('pdf-viewer-general', generalScrollListener);
+    scrollService.addTempHighlightListener('pdf-viewer-temp-highlight', tempHighlightListenerCallback);
     
     return () => {
-      scrollService.removeListener('pdf-viewer');
+      scrollService.removeListener('pdf-viewer-general');
+      scrollService.removeTempHighlightListener('pdf-viewer-temp-highlight');
     };
-  }, [annotations, currentPage, handlePageChange, handleAnnotationSelected]);
+  }, [annotations, page, handlePageChange, handleAnnotationSelected]); // Added 'page' to dependencies
 
   // Annotation mode indicator
   const renderAnnotationModeIndicator = () => {
@@ -744,7 +766,8 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
                   activeAnnotationTool={activeAnnotationTool}
                   onTextSelection={handleTextSelection}
                   onAnnotationSelected={handleAnnotationSelected}
-                  showAiHighlights={showAiHighlights} // Pass down to PDFComponents
+                  showAiHighlights={showAiHighlights}
+                  temporaryHighlights={temporaryHighlights} // Pass temporary highlights
                 />
               </div>
             </div>

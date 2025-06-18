@@ -206,6 +206,7 @@ const AnnotationCard = ({
                   }}
                   placeholder="Add tag"
                   className="h-6 w-20 px-1 py-0 text-xs"
+                  dir="auto" // Added for RTL support
                 />
               )}
             </div>
@@ -295,7 +296,8 @@ const AnnotationCard = ({
                   <div className="mt-2">
                     <Input 
                       placeholder="Add a comment..." 
-                      className="h-8 text-xs" 
+                      className="h-8 text-xs"
+                      dir="auto" // Added for RTL support
                     />
                   </div>
                 </div>
@@ -462,6 +464,7 @@ export function AnnotationSidebar({
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              dir="auto" // Added for RTL support
             />
             {searchQuery && (
               <Button
