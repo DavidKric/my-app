@@ -642,6 +642,7 @@ export function PDFToolbar({
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
               ref={searchInputRef}
+              dir="auto" // Added for RTL support
             />
             <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
               <Search size={14} strokeWidth={2} />

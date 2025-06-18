@@ -91,6 +91,7 @@ export default function FileNodeComponent({
             }}
             autoFocus
             className="bg-muted text-muted-foreground px-1"
+            dir="auto" // Added for RTL support
           />
         ) : (
           <span>{fileName}</span>

@@ -120,6 +120,7 @@ export default function FolderNodeComponent({
                 onKeyDown={e => { if(e.key === 'Enter') handleRenameSubmit(); }}
                 autoFocus
                 className="bg-muted text-muted-foreground px-1"
+                dir="auto" // Added for RTL support
               />
             ) : (
               <span onDoubleClick={toggleExpand}>{folderName}</span>
