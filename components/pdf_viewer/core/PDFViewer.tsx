@@ -72,6 +72,22 @@ const PDFComponents = dynamic(() => import('./PDFComponents'), {
 // Dynamically import the outline and thumbnails components
 const PDFThumbnails = dynamic(() => import('./PDFThumbnails'), { ssr: false }) as any;
 const PDFOutline = dynamic(() => import('./PDFOutline'), { ssr: false }) as any;
+const TextSelectionPopover = dynamic(() => import('../annotations/TextSelectionPopover'), { ssr: false });
+
+interface TextSelectionRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  // For positioning relative to viewport if needed
+  clientX?: number;
+  clientY?: number;
+}
+interface TextSelectionData {
+  text: string;
+  rect: TextSelectionRect; // Use our defined interface
+  pageNumber: number;
+}
 
 interface PDFViewerProps {
   fileUrl: string | null | undefined;
@@ -114,7 +130,11 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
 }) => {
   // Now we can access the library context!
   const { numPages, outline } = useContext(DocumentContext);
-  const { scale } = useContext(TransformContext);
+  const { scale, setScale, rotate } = useContext(TransformContext) as { // Assuming setScale and rotate exist
+    scale: number;
+    setScale: (scale: number) => void;
+    rotate: (angle: number) => void;
+  };
 
   // Process file URL to ensure it works correctly
   const fileUrl = useMemo(() => {
@@ -143,6 +163,11 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
   const [showOutlinePanel, setShowOutlinePanel] = useState<boolean>(false);
   const [showThumbnailsPanel, setShowThumbnailsPanel] = useState<boolean>(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState<boolean>(false);
+  const [showAiHighlights, setShowAiHighlights] = useState<boolean>(true); // State for AI highlights
+  const [textSelectionData, setTextSelectionData] = useState<TextSelectionData | null>(null);
+  const [showAnnotationNoteInput, setShowAnnotationNoteInput] = useState<boolean>(false);
+  const [currentAnnotationText, setCurrentAnnotationText] = useState<string>('');
+
 
   // Update internal page when prop changes
   useEffect(() => {
@@ -241,15 +266,109 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
   };
 
   const handleTextSelection = (selectedText: string, boundingRect: any, pageNumber: number) => {
+    // If an annotation tool is active from the toolbar, create annotation directly
     if (activeAnnotationTool && onCreateAnnotation) {
       onCreateAnnotation({
         textSnippet: selectedText,
         boundingRect: boundingRect,
         pageNumber: pageNumber,
         type: activeAnnotationTool,
-        content: selectedText
+        content: activeAnnotationTool === AnnotationType.NOTE || activeAnnotationTool === AnnotationType.COMMENT ? "" : selectedText, // Clear content for notes initially
+      });
+      // Optionally, clear active tool after one use, or keep it active
+      // setActiveAnnotationTool(null);
+    } else if (selectedText.trim()) {
+      // Otherwise, show popover for user to choose action
+      // Adjust boundingRect: The raw rect might be relative to the PDF page's internal coordinate system.
+      // We need to transform it to be relative to the viewport or a scrollable container.
+      // For simplicity, this example assumes boundingRect is somewhat usable for direct positioning.
+      // A more robust solution would involve getting the target page element and calculating relative position.
+
+      // Get the PDF viewer's main scrollable container
+      const viewerContainer = containerRef.current?.querySelector('.overflow-auto'); // Adjust selector if needed
+      const pageElement = viewerContainer?.querySelector(`[data-page-number="${pageNumber}"]`) as HTMLElement | null; // Assuming PageWrapper adds this
+
+      let popoverRect: TextSelectionRect = { ...boundingRect }; // Start with the raw rect
+
+      if (pageElement && viewerContainer) {
+        const pageRect = pageElement.getBoundingClientRect();
+        const containerRect = viewerContainer.getBoundingClientRect();
+
+        // Calculate position relative to the scrollable container's viewport
+        // This is simplified; true calculation needs to account for scroll offsets within the page if multi-canvas pages are individually scrollable.
+        // For now, let's assume boundingRect is relative to the *start* of the PDF page content.
+        popoverRect = {
+          top: pageRect.top - containerRect.top + viewerContainer.scrollTop + boundingRect.top * scale,
+          left: pageRect.left - containerRect.left + viewerContainer.scrollLeft + boundingRect.left * scale,
+          width: boundingRect.width * scale,
+          height: boundingRect.height * scale,
+        };
+      } else {
+         // Fallback if pageElement not found, adjust by current scale. This might not be perfectly accurate.
+        popoverRect = {
+          top: boundingRect.top * scale + (containerRef.current?.offsetTop || 0),
+          left: boundingRect.left * scale + (containerRef.current?.offsetLeft || 0),
+          width: boundingRect.width * scale,
+          height: boundingRect.height * scale,
+        };
+      }
+      // Add a small offset to prevent popover from overlapping selection too much
+      popoverRect.top += popoverRect.height + 5;
+
+
+      setTextSelectionData({ text: selectedText, rect: popoverRect, pageNumber });
+    } else {
+      setTextSelectionData(null); // Clear if no text is selected
+    }
+
+    // Also pass to external onTextSelected if provided
+    if (onTextSelected) {
+      onTextSelected(selectedText, boundingRect, pageNumber);
+    }
+  };
+
+  const clearTextSelection = () => {
+    setTextSelectionData(null);
+    setShowAnnotationNoteInput(false);
+    setCurrentAnnotationText('');
+  };
+
+  const handleCreateHighlightFromPopover = () => {
+    if (textSelectionData && onCreateAnnotation) {
+      onCreateAnnotation({
+        textSnippet: textSelectionData.text,
+        boundingRect: textSelectionData.rect, // This rect might need to be transformed back to PDF coordinates
+        pageNumber: textSelectionData.pageNumber,
+        type: AnnotationType.HIGHLIGHT,
+        color: 'yellow', // Default user highlight color
       });
     }
+    clearTextSelection();
+  };
+
+  const handleOpenAddNoteFromPopover = () => {
+    if (textSelectionData) {
+      setShowAnnotationNoteInput(true);
+      // Popover might be hidden by now or input shown elsewhere
+    }
+  };
+
+  const handleSaveNote = () => {
+    if (textSelectionData && onCreateAnnotation && currentAnnotationText.trim()) {
+      onCreateAnnotation({
+        textSnippet: textSelectionData.text,
+        boundingRect: textSelectionData.rect, // Transform back if needed
+        pageNumber: textSelectionData.pageNumber,
+        type: AnnotationType.NOTE, // Or COMMENT
+        content: currentAnnotationText,
+        // Add specific styling for note indicator if needed
+      });
+    }
+    clearTextSelection();
+  };
+
+  const handleToggleAiHighlights = () => {
+    setShowAiHighlights(prev => !prev);
   };
 
   const handleJumpToAnnotation = (annotation: Annotation) => {
@@ -498,10 +617,12 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
 
   // Render the PDF viewer UI
   return (
-    <div className="pdf-viewer-container fixed inset-0 flex flex-col w-full h-full bg-white">
+    // Use bg-background for the outermost container
+    <div className="pdf-viewer-container fixed inset-0 flex flex-col w-full h-full bg-background text-foreground">
       {/* Toolbar at top - fixed positioned */}
+      {/* Toolbar uses bg-background/90 via its own props/styling in EnhancedPDFToolbar, so it's fine */}
       <div className={cn(
-        "pdf-toolbar-container w-full flex-none bg-white border-b z-50 relative",
+        "pdf-toolbar-container w-full flex-none border-b border-border z-50 relative", // Removed bg-white, added border-border
         annotationToolbarPosition === 'top' ? 'order-first' : 'order-last'
       )}>
         <PDFToolbar
@@ -510,23 +631,30 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
           onPrevPage={() => handlePageChange(Math.max(1, page - 1))}
           onNextPage={() => handlePageChange(Math.min(numPages, page + 1))}
           onPageChange={handlePageChange}
-          data-toggle-outline="true"
-          data-toggle-thumbnails="true"
-          onDownload={() => {/* Download functionality */}}
-          onPrint={() => {/* Print functionality */}}
+          zoomLevel={scale} // Pass current scale as zoomLevel
+          onZoomIn={() => setScale && setScale(scale * 1.2)} // Example zoom factors
+          onZoomOut={() => setScale && setScale(scale / 1.2)}
+          onZoomChange={(newScale) => setScale && setScale(newScale)} // New handler
+          onToggleOutline={toggleOutlinePanel} // New handler
+          onToggleThumbnails={toggleThumbnailsPanel} // New handler
+          onRotate={() => rotate && rotate(90)} // Example: rotate 90 deg clockwise
+          onDownload={handleDownload} // Connect existing download handler
+          onPrint={handlePrint} // Connect existing print handler
+          isAiHighlightsVisible={showAiHighlights} // Pass state
+          onToggleAiHighlights={handleToggleAiHighlights} // Pass handler
           data-show-search={showSearchBar ? 'true' : 'false'}
           data-active-annotation-tool={activeAnnotationTool}
           data-has-auto-annotations={hasAutoAnnotations ? 'true' : 'false'}
           onShowShortcuts={() => setShowShortcutsDialog(true)}
-          onClick={(e: React.MouseEvent<HTMLDivElement>) => {
-            // Handle toggle events by checking data attributes and event target
-            const target = e.target as HTMLElement;
-            if (target.closest('[data-toggle-outline]')) {
-              toggleOutlinePanel();
-            } else if (target.closest('[data-toggle-thumbnails]')) {
-              toggleThumbnailsPanel();
-            }
-          }}
+          // Remove the generic onClick for toggles, as dedicated props are now used.
+          // onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+          //   const target = e.target as HTMLElement;
+          //   if (target.closest('[data-toggle-outline]')) {
+          //     toggleOutlinePanel();
+          //   } else if (target.closest('[data-toggle-thumbnails]')) {
+          //     toggleThumbnailsPanel();
+          //   }
+          // }}
         />
       </div>
       
@@ -553,19 +681,61 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
               </div>
             </div>
           ) : (
-            <div className="w-full h-full overflow-auto">
+            <div className="w-full h-full overflow-auto" onClick={textSelectionData ? clearTextSelection : undefined}>
               {/* Show annotation mode indicator when an annotation tool is active */}
               {activeAnnotationTool && (
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
                   {renderAnnotationModeIndicator()}
                 </div>
               )}
+
+              {/* Text Selection Popover */}
+              {textSelectionData && !showAnnotationNoteInput && (
+                <TextSelectionPopover
+                  position={textSelectionData.rect}
+                  onHighlight={handleCreateHighlightFromPopover}
+                  onAddNote={handleOpenAddNoteFromPopover}
+                />
+              )}
+
+              {/* Inline Note Input (simplified) */}
+              {textSelectionData && showAnnotationNoteInput && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: textSelectionData.rect.top + textSelectionData.rect.height + 10, // Position below selection
+                    left: textSelectionData.rect.left,
+                    zIndex: 101, // Above popover
+                  }}
+                  className="bg-background p-2 border rounded shadow-lg w-64"
+                  onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+                >
+                  <textarea
+                    value={currentAnnotationText}
+                    onChange={(e) => setCurrentAnnotationText(e.target.value)}
+                    placeholder="Add your note..."
+                    className="w-full h-20 p-1 border rounded mb-2 text-sm dark:bg-gray-800 dark:text-white"
+                    autoFocus
+                    dir="auto" // Handle RTL/LTR automatically
+                  />
+                  <div className="flex justify-end space-x-2">
+                    <Button size="xs" variant="outline" onClick={clearTextSelection}>Cancel</Button>
+                    <Button size="xs" onClick={handleSaveNote}>Save Note</Button>
+                  </div>
+                </div>
+              )}
               
               {/* Main PDF component - full viewport rendering */}
-              <div className="w-full max-w-4xl h-[80vh] overflow-y-auto overflow-x-hidden bg-white rounded shadow border mx-auto">
-                <PDFComponents
-                  fileUrl={fileUrl}
-                  pdfData={pdfData}
+              {/* This div is the scrollable area for PDF pages */}
+              <div className="w-full h-full flex justify-center py-4"> {/* Added padding for scroll aesthetics */}
+                {/* This inner div is for the PDF pages themselves, typically white paper with dark text.
+                    It should not change with theme, but its container can.
+                    Using bg-muted to provide a slight contrast to bg-background in dark mode for the page area.
+                 */}
+                <div className="w-full max-w-4xl h-full bg-muted shadow-lg">
+                  <PDFComponents
+                    fileUrl={fileUrl}
+                    pdfData={pdfData}
                   currentPage={page}
                   onDocumentLoadSuccess={handleDocumentLoadSuccess}
                   onDocumentLoadError={handleDocumentLoadError}
@@ -574,6 +744,7 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
                   activeAnnotationTool={activeAnnotationTool}
                   onTextSelection={handleTextSelection}
                   onAnnotationSelected={handleAnnotationSelected}
+                  showAiHighlights={showAiHighlights} // Pass down to PDFComponents
                 />
               </div>
             </div>
@@ -582,14 +753,14 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
         
         {/* Side panels - overlaid on top of PDF like Semantic Scholar */}
         <div className={cn(
-          "absolute top-0 left-0 h-full bg-white border-r shadow-lg transition-all duration-200 ease-in-out z-20",
+          "absolute top-0 left-0 h-full bg-card text-card-foreground border-r border-border shadow-lg transition-all duration-200 ease-in-out z-20",
           (showOutlinePanel || showThumbnailsPanel) ? "w-72" : "w-0"
         )}>
           {/* Outline panel */}
           {showOutlinePanel && (
             <div className="h-full overflow-auto">
-              <div className="p-4 flex items-center justify-between border-b">
-                <h3 className="font-medium">Document Outline</h3>
+              <div className="p-4 flex items-center justify-between border-b border-border">
+                <h3 className="font-medium text-foreground">Document Outline</h3>
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -617,8 +788,8 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
           {/* Thumbnails panel */}
           {showThumbnailsPanel && (
             <div className="h-full overflow-auto">
-              <div className="p-4 flex items-center justify-between border-b">
-                <h3 className="font-medium">Page Thumbnails</h3>
+              <div className="p-4 flex items-center justify-between border-b border-border">
+                <h3 className="font-medium text-foreground">Page Thumbnails</h3>
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -642,9 +813,9 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
         
         {/* Search results panel - overlaid on top right like Semantic Scholar */}
         {searchResults.length > 0 && (
-          <div className="absolute right-4 top-4 w-80 max-h-96 overflow-auto bg-white shadow-lg rounded-md border border-border z-30">
-            <div className="p-4 border-b">
-              <h3 className="font-medium">Search Results</h3>
+          <div className="absolute right-4 top-4 w-80 max-h-96 overflow-auto bg-card text-card-foreground shadow-lg rounded-md border border-border z-30">
+            <div className="p-4 border-b border-border">
+              <h3 className="font-medium text-foreground">Search Results</h3>
               <p className="text-sm text-muted-foreground">Found {searchResults.length} results</p>
             </div>
             <ul className="py-2">
@@ -699,9 +870,13 @@ const PDFViewerInner: React.FC<PDFViewerProps> = ({
 
 // Main PDFViewer component - wraps everything in ContextProvider
 const PDFViewer: React.FC<PDFViewerProps> = (props) => {
+  // Default showAiHighlights to true if not provided
+  const { showAiHighlights: initialShowAiHighlights, ...restProps } = props;
+
   return (
     <ContextProvider>
-      <PDFViewerInner {...props} />
+      {/* Pass down initialShowAiHighlights if needed, but PDFViewerInner now has its own state */}
+      <PDFViewerInner {...restProps} />
     </ContextProvider>
   );
 };

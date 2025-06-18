@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button';
 import { FloatingActionButtons } from '@/components/pdf_viewer/utils/FloatingActionButtons';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CaseProvider } from '@/contexts/CaseContext';
+import FloatingAssistantButton from '@/components/assistant/FloatingAssistantButton';
+import AssistantPanel from '@/components/assistant/AssistantPanel';
+import { ThemeToggleButton } from '@/components/ThemeToggleButton'; // Import ThemeToggleButton
 
 interface LayoutClientProps {
   children: React.ReactNode;
@@ -66,12 +70,41 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
   const handleAIAssist = () => {
     setIsRightExpanded(true);
     setActiveTab('copilot');
+    // Potentially open Assistant Panel too, or make it the same thing as copilot tab
+    // setIsAssistantPanelVisible(true);
+  };
+
+  const [isAssistantPanelVisible, setIsAssistantPanelVisible] = useState(false);
+  const [assistantHasNewMessages, setAssistantHasNewMessages] = useState(false); // Example state
+
+  const toggleAssistantPanel = () => {
+    setIsAssistantPanelVisible(prev => !prev);
+    if (assistantHasNewMessages) {
+      setAssistantHasNewMessages(false); // Clear notification on open
+    }
   };
   
+  // Example function to simulate receiving a new message
+  const simulateNewAssistantMessage = () => {
+    if (!isAssistantPanelVisible) {
+      setAssistantHasNewMessages(true);
+    }
+    // In a real app, this would be triggered by actual new messages from the assistant
+    console.log("Simulating new assistant message indicator.");
+  };
+  React.useEffect(() => { // Demo: simulate new message after 5s if panel is closed
+    const timer = setTimeout(() => {
+      if(!isAssistantPanelVisible) simulateNewAssistantMessage();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isAssistantPanelVisible]);
+
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Left Sidebar: File Explorer - Always visible, expandable like Semantic Scholar */}
-      <motion.div
+    <CaseProvider initialCases={cases}>
+      <div className="flex h-screen bg-background overflow-hidden">
+        {/* Left Sidebar: File Explorer - Always visible, expandable like Semantic Scholar */}
+        <motion.div
         id="file-explorer-sidebar"
         variants={sidebarVariants}
         initial={false}
@@ -83,19 +116,25 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
           <>
             {/* Expanded Sidebar Header */}
             <div className="flex items-center justify-between p-3 border-b border-border">
-              <h2 className="text-sm font-medium text-foreground">Files</h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsLeftExpanded(false)}
-                className="h-8 w-8 rounded-sm hover:bg-muted"
-                aria-label="Minimize file explorer"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-medium text-foreground">Files</h2>
+              </div>
+              <div className="flex items-center gap-1">
+                <ThemeToggleButton />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsLeftExpanded(false)}
+                  className="h-8 w-8 rounded-sm hover:bg-muted"
+                  aria-label="Minimize file explorer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <ScrollArea className="h-[calc(100%-60px)]">
-              <ExplorerSidebar cases={cases} isExpanded={true} />
+              {/* ExplorerSidebar will now consume from CaseContext */}
+              <ExplorerSidebar isExpanded={true} />
             </ScrollArea>
           </>
         ) : (
@@ -171,6 +210,17 @@ export function LayoutClient({ children, cases }: LayoutClientProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+
+      {/* Floating Assistant Button & Panel */}
+      <FloatingAssistantButton
+        onClick={toggleAssistantPanel}
+        hasNewMessages={assistantHasNewMessages}
+      />
+      <AssistantPanel
+        isVisible={isAssistantPanelVisible}
+        onClose={toggleAssistantPanel}
+      />
+    </CaseProvider>
   );
 } 

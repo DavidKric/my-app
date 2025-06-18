@@ -31,7 +31,8 @@ import {
   BookOpen,
   Share2,
   Settings,
-  FileDown
+  FileDown,
+  Sparkles as AiIcon // Icon for AI toggle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -89,6 +90,12 @@ interface PDFToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   onPrint?: () => void;
   onRotate?: () => void;
   onShowShortcuts?: () => void;
+  onZoomChange: (level: number) => void;
+  onToggleOutline: () => void;
+  onToggleThumbnails: () => void;
+  // Props for AI Highlights toggle
+  isAiHighlightsVisible?: boolean;
+  onToggleAiHighlights?: () => void;
 }
 
 export function PDFToolbar({
@@ -98,6 +105,7 @@ export function PDFToolbar({
   zoomLevel,
   onZoomIn,
   onZoomOut,
+  onZoomChange,
   onNextPage,
   onPrevPage,
   onPageChange,
@@ -106,6 +114,10 @@ export function PDFToolbar({
   onHighlight,
   onComment,
   onToggleContextPanel,
+  onToggleOutline,
+  onToggleThumbnails,
+  isAiHighlightsVisible, // New
+  onToggleAiHighlights, // New
   onDownload,
   onPrint,
   onRotate,
@@ -401,28 +413,86 @@ export function PDFToolbar({
                     size="icon"
                     className="h-8 w-8 rounded-full"
                     onClick={onZoomOut}
+                    title="Zoom Out"
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
-                  <span className="text-xs font-medium mx-1 whitespace-nowrap">
-                    {Math.round(zoomLevel * 100)}%
-                  </span>
+                  {/* Zoom Level Input */}
+                  <Input
+                    type="number"
+                    value={Math.round(zoomLevel * 100)}
+                    onChange={(e) => {
+                      const newZoomPercent = parseInt(e.target.value);
+                      if (!isNaN(newZoomPercent) && newZoomPercent > 0) {
+                        onZoomChange(newZoomPercent / 100);
+                      }
+                    }}
+                    onBlur={(e) => { // Reset to current zoom if input is invalid or empty on blur
+                      const currentZoomPercent = Math.round(zoomLevel * 100);
+                      if (!e.target.value || parseInt(e.target.value) <= 0) {
+                        e.target.value = currentZoomPercent.toString();
+                      }
+                    }}
+                    className="h-6 w-14 text-xs p-1 text-center mx-0.5"
+                    min="10"
+                    max="500" // Example range
+                    step="10"
+                    title="Zoom Level (%)"
+                  />
+                  <span className="text-xs font-medium mr-1">%</span>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 rounded-full"
                     onClick={onZoomIn}
+                    title="Zoom In"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
 
+                {/* Document Structure Toggles */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full bg-muted/60 hover:bg-muted"
+                  onClick={onToggleOutline}
+                  title="Toggle Outline"
+                >
+                  <ListTree className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full bg-muted/60 hover:bg-muted"
+                  onClick={onToggleThumbnails}
+                  title="Toggle Thumbnails"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                {/* AI Highlights Toggle */}
+                {onToggleAiHighlights && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-8 w-8 rounded-full bg-muted/60 hover:bg-muted",
+                      isAiHighlightsVisible && "bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                    )}
+                    onClick={onToggleAiHighlights}
+                    title={isAiHighlightsVisible ? "Hide AI Highlights" : "Show AI Highlights"}
+                  >
+                    <AiIcon className="h-4 w-4" />
+                  </Button>
+                )}
+
                 {/* Rotate */}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-full bg-muted/60"
+                  className="h-8 w-8 rounded-full bg-muted/60 hover:bg-muted"
                   onClick={onRotate}
+                  title="Rotate Clockwise"
                 >
                   <RotateCw className="h-4 w-4" />
                 </Button>

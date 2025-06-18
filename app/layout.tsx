@@ -4,6 +4,7 @@ import "./globals.css";
 import { setupPromisePolyfill } from "@/lib/promise-polyfill";
 import { AnnotationProvider } from "@/components/context_panel/annotations/AnnotationProvider";
 import Script from "next/script";
+import { ThemeProvider } from "next-themes"; // Import ThemeProvider
 
 // Initialize Promise.withResolvers polyfill
 setupPromisePolyfill();
@@ -36,11 +37,18 @@ export default function RootLayout({
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning
+        suppressHydrationWarning // Recommended for next-themes
       >
-        <AnnotationProvider>
-          {children}
-        </AnnotationProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AnnotationProvider> {/* Assuming AnnotationProvider doesn't conflict with ThemeProvider */}
+            {children}
+          </AnnotationProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

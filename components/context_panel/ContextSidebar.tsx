@@ -8,12 +8,23 @@ import {
   FileText, 
   MessageSquare, 
   Highlighter,
-  BookOpen,
+  BookOpen, // Already here, can be used for Bookmarks
+  Users, // For Entities
+  CalendarClock, // For Timeline
+  Zap, // For Automations
+  Brain, // For Insights (if different from Skimming)
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import SkimmingHighlightsPanel from '@/components/context_panel/annotations/SkimmingHighlightsPanel';
+
+// Import Panels
+import SkimmingHighlightsPanel from '@/components/context_panel/annotations/SkimmingHighlightsPanel'; // Reused for Insights
+import EntitiesPanel from './entities/EntitiesPanel';
+import TimelinePanel from './timeline/TimelinePanel';
+import BookmarksPanel from './bookmarks/BookmarksPanel';
+import AutomationsPanel from './automations/AutomationsPanel';
+
 
 interface Tab {
   id: string;
@@ -84,6 +95,32 @@ export default function ContextSidebar({ activeTab: externalActiveTab, onSetActi
       label: 'AI Copilot', 
       icon: <MessageSquare className="h-4 w-4" /> 
     },
+    // New Tabs
+    {
+      id: 'entities',
+      label: 'Entities',
+      icon: <Users className="h-4 w-4" />
+    },
+    {
+      id: 'timeline',
+      label: 'Timeline',
+      icon: <CalendarClock className="h-4 w-4" />
+    },
+    {
+      id: 'bookmarks',
+      label: 'Bookmarks',
+      icon: <BookOpen className="h-4 w-4" />
+    },
+    {
+      id: 'automations',
+      label: 'Automations',
+      icon: <Zap className="h-4 w-4" />
+    },
+    {
+      id: 'insights', // Using SkimmingHighlightsPanel for this
+      label: 'Insights',
+      icon: <Brain className="h-4 w-4" />
+    }
   ];
 
   // Always render the full expanded view since minimized state is handled by LayoutClient
@@ -102,7 +139,13 @@ export default function ContextSidebar({ activeTab: externalActiveTab, onSetActi
                     ? cn("text-primary tab-border-glow", {
                         "tab-border-glow-blue": tab.id === "copilot",
                         "tab-border-glow-amber": tab.id === "annotations",
-                        "tab-border-glow-purple": tab.id === "skimming"
+                        "tab-border-glow-purple": tab.id === "skimming",
+                        // Add glow colors for new tabs if desired
+                        "tab-border-glow-green": tab.id === "entities",
+                        "tab-border-glow-red": tab.id === "timeline",
+                        "tab-border-glow-yellow": tab.id === "bookmarks",
+                        "tab-border-glow-cyan": tab.id === "automations",
+                        "tab-border-glow-pink": tab.id === "insights",
                       })
                     : "text-muted-foreground hover:text-foreground hover:bg-gradient-to-b hover:from-blue-50/20 hover:to-transparent dark:hover:from-blue-900/10 dark:hover:to-transparent",
                   tab.id === 'copilot' && hasNewMessage && "tab-notification tab-breathing"
@@ -168,6 +211,72 @@ export default function ContextSidebar({ activeTab: externalActiveTab, onSetActi
               className="h-full"
             >
               <ChatSidebar className="h-full border-0 rounded-none" onNewMessage={handleNewMessage} />
+            </motion.div>
+          )}
+
+          {activeTab === 'entities' && (
+            <motion.div
+              key="entities"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              <EntitiesPanel />
+            </motion.div>
+          )}
+
+          {activeTab === 'timeline' && (
+            <motion.div
+              key="timeline"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              <TimelinePanel />
+            </motion.div>
+          )}
+
+          {activeTab === 'bookmarks' && (
+            <motion.div
+              key="bookmarks"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              <BookmarksPanel />
+            </motion.div>
+          )}
+
+          {activeTab === 'automations' && (
+            <motion.div
+              key="automations"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              <AutomationsPanel />
+            </motion.div>
+          )}
+
+          {activeTab === 'insights' && (
+            <motion.div
+              key="insights"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              {/* Reusing SkimmingHighlightsPanel for Insights */}
+              <SkimmingHighlightsPanel />
             </motion.div>
           )}
         </AnimatePresence>
