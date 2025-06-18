@@ -7,7 +7,6 @@ import LeftSidebar from '@/components/workspace/LeftSidebar';
 import CenterPane from '@/components/workspace/CenterPane';
 import RightSidebar from '@/components/workspace/RightSidebar';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ChevronLeft, ChevronRight, PanelLeftClose, PanelRightClose, PanelLeftOpen, PanelRightOpen } from 'lucide-react';
 
 // Note: fetchCasesData has been moved to app/lib/data.ts
@@ -61,7 +60,7 @@ export default function WorkspaceLayout({ children, cases }: { children: React.R
               maxSize={40}
               collapsible={true}
               collapsedSize={0}
-              onCollapse={(collapsed) => setIsLeftCollapsed(collapsed)}
+              onCollapse={() => setIsLeftCollapsed(true)}
               className="h-full"
               id="left-sidebar-panel"
             >
@@ -113,7 +112,7 @@ export default function WorkspaceLayout({ children, cases }: { children: React.R
               maxSize={40}
               collapsible={true}
               collapsedSize={0}
-              onCollapse={(collapsed) => setIsRightCollapsed(collapsed)}
+              onCollapse={() => setIsRightCollapsed(true)}
               className="h-full"
               id="right-sidebar-panel"
             >

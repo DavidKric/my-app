@@ -27,7 +27,13 @@ import {
   User,
   Calendar,
   Check,
-  Flag
+  Flag,
+  Highlighter,
+  Pen,
+  Brain,
+  FlaskConical,
+  Target,
+  Goal
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -153,8 +159,25 @@ const AnnotationCard = ({
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(expanded);
   const [showComments, setShowComments] = React.useState(false);
+  const [newTag, setNewTag] = React.useState("");
   const { updateAnnotation } = useAnnotations();
 
+  const handleAddTag = () => {
+    if (newTag.trim() && annotation.tags && !annotation.tags.includes(newTag.trim())) {
+      const updatedTags = [...annotation.tags, newTag.trim()];
+      // @ts-expect-error: 'tags' may not be in Partial<Annotation> but is supported by backend
+      updateAnnotation(annotation.id, { tags: updatedTags });
+      setNewTag("");
+    }
+  };
+  const handleRemoveTag = (tagToRemove: string) => {
+    if (annotation.tags) {
+      const updatedTags = annotation.tags.filter(tag => tag !== tagToRemove);
+      // @ts-expect-error: 'tags' may not be in Partial<Annotation> but is supported by backend
+      updateAnnotation(annotation.id, { tags: updatedTags });
+    }
+  };
+  
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
     if (onClick) onClick();
@@ -179,19 +202,11 @@ const AnnotationCard = ({
         <div className="mt-2">
           <p className="text-sm font-medium">{annotation.text}</p>
 
-          {(annotation.tags && annotation.tags.length > 0) || isExpanded ? (
+          {annotation.tags && annotation.tags.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
               {annotation.tags.map(tag => (
-                <Badge key={tag} variant="secondary" className="pr-1">
+                <Badge key={tag} variant="secondary">
                   {tag}
-                  {isExpanded && (
-                    <button
-                      className="ml-1 text-muted-foreground hover:text-foreground"
-                      onClick={() => handleRemoveTag(tag)}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
                 </Badge>
               ))}
               {isExpanded && (
@@ -210,7 +225,7 @@ const AnnotationCard = ({
                 />
               )}
             </div>
-          ) : null}
+          )}
           
           {isExpanded && (
             <div className="mt-2">
@@ -716,6 +731,7 @@ export const mockAnnotations: Annotation[] = [
         createdAt: new Date("2023-10-14T11:25:00")
       }
     ],
+    tags: [],
     flagged: false
   },
   {
@@ -730,6 +746,7 @@ export const mockAnnotations: Annotation[] = [
       name: "Sarah Williams"
     },
     comments: [],
+    tags: [],
     flagged: false
   },
   {

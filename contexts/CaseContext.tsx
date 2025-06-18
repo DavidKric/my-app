@@ -27,30 +27,25 @@ export const useCaseContext = () => {
 
 interface CaseProviderProps {
   children: ReactNode;
-  initialCases: Case[];
+  initialCases?: Case[];
 }
 
-export const CaseProvider: React.FC<CaseProviderProps> = ({ children, initialCases }) => {
-  const [cases, setCases] = useState<Case[]>(initialCases);
+export const CaseProvider: React.FC<CaseProviderProps> = ({ children, initialCases = [] }) => {
+  const [cases, setCases] = useState<Case[]>(initialCases || []);
   const [selectedCaseId, setSelectedCaseId] = useState<string | undefined>(
-    initialCases.length > 0 ? initialCases[0].id : undefined
+    initialCases && initialCases.length > 0 ? initialCases[0].id : undefined
   );
 
   useEffect(() => {
-    // If initialCases changes and the current selectedCaseId is no longer valid,
-    // or if no case was selected and cases become available, select the first one.
-    if (initialCases.length > 0) {
-      const currentCaseExists = initialCases.some(c => c.id === selectedCaseId);
-      if (!currentCaseExists || !selectedCaseId) {
-        setSelectedCaseId(initialCases[0].id);
-      }
-    } else {
-      setSelectedCaseId(undefined);
+    // Update cases when initialCases changes
+    const safeCases = initialCases || [];
+    setCases(safeCases);
+    
+    // Set initial selectedCaseId only if it's not already set and we have cases
+    if (!selectedCaseId && safeCases.length > 0) {
+      setSelectedCaseId(safeCases[0].id);
     }
-    // Also update the internal cases state if initialCases prop changes.
-    // This might happen if cases are fetched/updated dynamically at a higher level.
-    setCases(initialCases);
-  }, [initialCases, selectedCaseId]);
+  }, [initialCases]); // Only depend on initialCases
 
   const selectCase = (caseId: string) => {
     setSelectedCaseId(caseId);

@@ -4,7 +4,7 @@ import "./globals.css";
 import { setupPromisePolyfill } from "@/lib/promise-polyfill";
 import { AnnotationProvider } from "@/components/context_panel/annotations/AnnotationProvider";
 import Script from "next/script";
-import { ThemeProvider } from "next-themes"; // Import ThemeProvider
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 // Initialize Promise.withResolvers polyfill
 setupPromisePolyfill();
@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* No PDF worker interference - let the library handle its own workers */}
       </head>
@@ -44,6 +44,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          storageKey="theme"
         >
           <AnnotationProvider> {/* Assuming AnnotationProvider doesn't conflict with ThemeProvider */}
             {children}
