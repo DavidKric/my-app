@@ -39,7 +39,6 @@ import { Annotation, AnnotationType } from '../annotations/AnnotationOverlay';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import PDFErrorBoundary from './PDFErrorBoundary';
-import scrollService, { ScrollPosition } from '@/lib/scroll-service';
 import {
   RENDER_TYPE,
   DocumentContext,
